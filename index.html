@@ -48,9 +48,7 @@ function makeApi(url, key) {
     },
     insert: async (table, row) => {
       const r = await fetch(base + '/rest/v1/' + table, {
-        method: 'POST',
-        headers: { ...h, Prefer: 'return=representation' },
-        body: JSON.stringify(row),
+        method: 'POST', headers: { ...h, Prefer: 'return=representation' }, body: JSON.stringify(row),
       });
       const text = await r.text();
       if (!r.ok) throw new Error(text || r.statusText);
@@ -58,9 +56,7 @@ function makeApi(url, key) {
     },
     update: async (table, filter, patch) => {
       const r = await fetch(base + '/rest/v1/' + table + '?' + filter, {
-        method: 'PATCH',
-        headers: { ...h, Prefer: 'return=representation' },
-        body: JSON.stringify(patch),
+        method: 'PATCH', headers: { ...h, Prefer: 'return=representation' }, body: JSON.stringify(patch),
       });
       const text = await r.text();
       if (!r.ok) throw new Error(text || r.statusText);
@@ -69,9 +65,7 @@ function makeApi(url, key) {
   };
 }
 
-const Icon = ({ d, className }) => (
-  <svg className={className || 'w-5 h-5'} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={d}/></svg>
-);
+const Icon = ({ d, className }) => (<svg className={className || 'w-5 h-5'} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={d}/></svg>);
 const IconHome = (p) => <Icon {...p} d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>;
 const IconUsers = (p) => <Icon {...p} d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8"/>;
 const IconClock = (p) => <Icon {...p} d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M12 6v6l4 2"/>;
@@ -91,42 +85,31 @@ const IconArrowLeft = (p) => <Icon {...p} d="M19 12H5 M12 19l-7-7 7-7"/>;
 const IconMegaphone = (p) => <Icon {...p} d="M3 11v3a4 4 0 0 0 4 4h2l5 4V7L9 11H7a4 4 0 0 0-4 4 M14 8a3 3 0 0 1 0 6"/>;
 const IconPlay = (p) => <Icon {...p} d="M5 3l14 9-14 9V3z"/>;
 const IconEye = (p) => <Icon {...p} d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>;
+const IconSparkle = (p) => <Icon {...p} d="M12 3l1.9 5.8L20 11l-5.8 2.1L12 19l-2.1-5.8L4 11l5.8-2.1z"/>;
+const IconMore = (p) => <Icon {...p} d="M12 5v.01 M12 12v.01 M12 19v.01"/>;
+const IconX = (p) => <Icon {...p} d="M18 6L6 18 M6 6l12 12"/>;
+const IconEdit = (p) => <Icon {...p} d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7 M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z"/>;
 
-function Card({ children, className }) {
-  return <div className={'bg-white rounded-2xl shadow-sm border border-slate-200 ' + (className || '')}>{children}</div>;
-}
+function Card({ children, className }) { return <div className={'bg-white rounded-2xl shadow-sm border border-slate-200 ' + (className || '')}>{children}</div>; }
 function Button({ children, onClick, variant, disabled, className }) {
   const base = 'inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ';
-  const styles = {
-    primary: 'bg-indigo-600 text-white hover:bg-indigo-700',
-    secondary: 'bg-slate-100 text-slate-700 hover:bg-slate-200',
-    danger: 'bg-rose-600 text-white hover:bg-rose-700',
-    success: 'bg-emerald-600 text-white hover:bg-emerald-700',
-  };
+  const styles = { primary: 'bg-indigo-600 text-white hover:bg-indigo-700', secondary: 'bg-slate-100 text-slate-700 hover:bg-slate-200', danger: 'bg-rose-600 text-white hover:bg-rose-700', success: 'bg-emerald-600 text-white hover:bg-emerald-700' };
   return <button type="button" onClick={onClick} disabled={disabled} className={base + (styles[variant || 'primary']) + ' ' + (className || '')}>{children}</button>;
 }
 function Input({ value, onChange, placeholder, type, label, helper }) {
-  return (<label className="block">
-    {label && <span className="text-sm font-medium text-slate-700 mb-1 block">{label}</span>}
-    <input type={type || 'text'} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-      className="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none text-base"/>
-    {helper && <span className="text-xs text-slate-500 mt-1 block">{helper}</span>}
-  </label>);
+  return (<label className="block">{label && <span className="text-sm font-medium text-slate-700 mb-1 block">{label}</span>}<input type={type || 'text'} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} className="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none text-base"/>{helper && <span className="text-xs text-slate-500 mt-1 block">{helper}</span>}</label>);
 }
-function TextArea({ value, onChange, placeholder, label, rows, helper }) {
-  return (<label className="block">
-    {label && <span className="text-sm font-medium text-slate-700 mb-1 block">{label}</span>}
-    <textarea value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} rows={rows || 3}
-      className="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none text-base resize-none font-mono"/>
-    {helper && <span className="text-xs text-slate-500 mt-1 block">{helper}</span>}
-  </label>);
+function TextArea({ value, onChange, placeholder, label, rows, helper, mono }) {
+  return (<label className="block">{label && <span className="text-sm font-medium text-slate-700 mb-1 block">{label}</span>}<textarea value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} rows={rows || 3} className={'w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none text-base resize-none ' + (mono ? 'font-mono' : '')}/>{helper && <span className="text-xs text-slate-500 mt-1 block">{helper}</span>}</label>);
+}
+function Select({ value, onChange, label, options, helper }) {
+  return (<label className="block">{label && <span className="text-sm font-medium text-slate-700 mb-1 block">{label}</span>}<select value={value} onChange={e => onChange(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none text-base bg-white">{options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}</select>{helper && <span className="text-xs text-slate-500 mt-1 block">{helper}</span>}</label>);
+}
+function Toggle({ checked, onChange, label, helper }) {
+  return (<div className="flex items-center justify-between gap-3"><div className="flex-1"><p className="text-sm font-medium text-slate-700">{label}</p>{helper && <p className="text-xs text-slate-500">{helper}</p>}</div><button onClick={() => onChange(!checked)} className={'relative w-11 h-6 rounded-full transition ' + (checked ? 'bg-indigo-600' : 'bg-slate-300')}><span className={'absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition transform ' + (checked ? 'translate-x-5' : '')}/></button></div>);
 }
 function Badge({ children, color }) {
-  const colors = {
-    indigo: 'bg-indigo-100 text-indigo-700', emerald: 'bg-emerald-100 text-emerald-700',
-    amber: 'bg-amber-100 text-amber-700', rose: 'bg-rose-100 text-rose-700',
-    slate: 'bg-slate-100 text-slate-700',
-  };
+  const colors = { indigo: 'bg-indigo-100 text-indigo-700', emerald: 'bg-emerald-100 text-emerald-700', amber: 'bg-amber-100 text-amber-700', rose: 'bg-rose-100 text-rose-700', slate: 'bg-slate-100 text-slate-700', violet: 'bg-violet-100 text-violet-700' };
   return <span className={'inline-block px-2 py-0.5 rounded-md text-xs font-medium ' + (colors[color || 'slate'])}>{children}</span>;
 }
 function Toast({ msg, kind, onDone }) {
@@ -137,15 +120,7 @@ function Toast({ msg, kind, onDone }) {
 }
 function Modal({ open, onClose, title, children }) {
   if (!open) return null;
-  return (<div className="fixed inset-0 z-50 bg-slate-900/50 flex items-end sm:items-center justify-center" onClick={onClose}>
-    <div className="bg-white w-full max-w-md max-h-[90vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl p-5" onClick={e => e.stopPropagation()}>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-bold text-slate-900">{title}</h2>
-        <button onClick={onClose} className="p-1 text-slate-400"><Icon d="M18 6L6 18 M6 6l12 12"/></button>
-      </div>
-      {children}
-    </div>
-  </div>);
+  return (<div className="fixed inset-0 z-50 bg-slate-900/50 flex items-end sm:items-center justify-center" onClick={onClose}><div className="bg-white w-full max-w-md max-h-[90vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl p-5" onClick={e => e.stopPropagation()}><div className="flex items-center justify-between mb-4"><h2 className="text-lg font-bold text-slate-900">{title}</h2><button onClick={onClose} className="p-1 text-slate-400"><IconX/></button></div>{children}</div></div>);
 }
 
 function Login({ onConnect }) {
@@ -154,55 +129,47 @@ function Login({ onConnect }) {
   const [err, setErr] = useState('');
   const submit = async () => {
     setErr(''); setBusy(true);
-    try {
-      const api = makeApi(SUPABASE_URL, key);
-      await api.rest('/v_pipeline_stats?select=*&limit=1');
-      onConnect({ url: SUPABASE_URL, key });
-    } catch { setErr('Connexion échouée. Vérifie ta clé service_role.'); }
+    try { const api = makeApi(SUPABASE_URL, key); await api.rest('/v_pipeline_stats?select=*&limit=1'); onConnect({ url: SUPABASE_URL, key }); }
+    catch { setErr('Connexion échouée. Vérifie ta clé service_role.'); }
     finally { setBusy(false); }
   };
-  return (<div className="min-h-screen flex items-center justify-center p-4">
-    <Card className="w-full max-w-md p-6">
-      <div className="flex items-center gap-3 mb-1">
-        <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white"><IconChat className="w-6 h-6"/></div>
-        <div><h1 className="text-xl font-bold text-slate-900">SMS Dashboard</h1><p className="text-xs text-slate-500">LeadsWebsite</p></div>
-      </div>
-      <p className="text-sm text-slate-600 mb-5 mt-3">Entre ta clé <code className="bg-slate-100 px-1 rounded">service_role</code>.</p>
-      <div className="space-y-3">
-        <Input label="Service Role Key" type="password" value={key} onChange={setKey} placeholder="eyJhbGc..." helper="Project Settings → API → service_role secret"/>
-        {err && <div className="text-sm text-rose-600 bg-rose-50 px-3 py-2 rounded-lg">{err}</div>}
-        <Button onClick={submit} disabled={busy || !key} className="w-full">{busy ? 'Connexion...' : 'Se connecter'}</Button>
-      </div>
-    </Card>
-  </div>);
+  return (<div className="min-h-screen flex items-center justify-center p-4"><Card className="w-full max-w-md p-6"><div className="flex items-center gap-3 mb-1"><div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white"><IconChat className="w-6 h-6"/></div><div><h1 className="text-xl font-bold text-slate-900">SMS Dashboard</h1><p className="text-xs text-slate-500">LeadsWebsite</p></div></div><p className="text-sm text-slate-600 mb-5 mt-3">Entre ta clé <code className="bg-slate-100 px-1 rounded">service_role</code>.</p><div className="space-y-3"><Input label="Service Role Key" type="password" value={key} onChange={setKey} placeholder="eyJhbGc..." helper="Project Settings → API → service_role secret"/>{err && <div className="text-sm text-rose-600 bg-rose-50 px-3 py-2 rounded-lg">{err}</div>}<Button onClick={submit} disabled={busy || !key} className="w-full">{busy ? 'Connexion...' : 'Se connecter'}</Button></div></Card></div>);
 }
 
 function fmtDate(s) { if (!s) return '—'; const d = new Date(s); return d.toLocaleString('fr-CA', { dateStyle: 'short', timeStyle: 'short' }); }
 function fmtRelative(s) { if (!s) return '—'; const d = new Date(s); const diff = (Date.now() - d.getTime()) / 1000; if (diff < 60) return 'maintenant'; if (diff < 3600) return Math.floor(diff/60) + ' min'; if (diff < 86400) return Math.floor(diff/3600) + ' h'; return Math.floor(diff/86400) + ' j'; }
+function fmtCost(n) { if (n == null) return '—'; return '$' + parseFloat(n).toFixed(4); }
 function tierColor(t) { if (!t) return 'slate'; if (t.startsWith('A')) return 'rose'; if (t.startsWith('B')) return 'amber'; if (t.startsWith('C')) return 'indigo'; return 'slate'; }
-function useToast() {
-  const [t, setT] = useState({ msg: '', kind: 'ok' });
-  return [t, (msg, kind) => setT({ msg, kind: kind || 'ok' }), () => setT({ msg: '', kind: 'ok' })];
-}
+function sentColor(s) { return s === 'interested' || s === 'positive' ? 'emerald' : s === 'hostile' ? 'rose' : s === 'not_interested' ? 'amber' : 'slate'; }
+function useToast() { const [t, setT] = useState({ msg: '', kind: 'ok' }); return [t, (msg, kind) => setT({ msg, kind: kind || 'ok' }), () => setT({ msg: '', kind: 'ok' })]; }
 function Row({ k, v }) { return <div className="flex items-center justify-between"><span className="text-slate-600">{k}</span>{v ? <IconCheck className="w-4 h-4 text-emerald-600"/> : <IconAlert className="w-4 h-4 text-rose-600"/>}</div>; }
 
+// =====================================================================
+// HOME / DASHBOARD
+// =====================================================================
 function Dashboard({ api, toast }) {
   const [stats, setStats] = useState(null);
   const [quiet, setQuiet] = useState(null);
+  const [costs, setCosts] = useState(null);
+  const [pendingSugg, setPendingSugg] = useState(0);
   const [health, setHealth] = useState(null);
   const [busy, setBusy] = useState(false);
   const [qs, setQs] = useState({ phone: '', body: '' });
   const [sending, setSending] = useState(false);
+
   const load = useCallback(async () => {
     try {
-      const [s, q] = await Promise.all([
+      const [s, q, c, sugg] = await Promise.all([
         api.rest('/v_pipeline_stats?select=*&limit=1'),
         api.rpc('is_quiet_hours', {}),
+        api.rest('/v_ai_costs_summary?select=*&limit=1'),
+        api.rest('/reply_suggestions?select=id&status=eq.pending'),
       ]);
-      setStats(s[0]); setQuiet(q);
+      setStats(s[0]); setQuiet(q); setCosts(c[0]); setPendingSugg((sugg || []).length);
     } catch (e) { toast(e.message, 'error'); }
   }, [api]);
   useEffect(() => { load(); }, [load]);
+
   const runHealth = async () => { setBusy(true); try { setHealth(await api.fn('health-check')); } catch (e) { toast('Health-check: ' + e.message, 'error'); } finally { setBusy(false); } };
   const send = async () => {
     if (!qs.phone || !qs.body) return;
@@ -211,66 +178,32 @@ function Dashboard({ api, toast }) {
     catch (e) { toast('Erreur: ' + e.message, 'error'); }
     finally { setSending(false); }
   };
+
   if (!stats) return <div className="p-8 text-center text-slate-500">Chargement...</div>;
   return (<div className="space-y-4">
-    <Card className={'p-4 flex items-center gap-3 ' + (quiet ? 'border-amber-300 bg-amber-50' : '')}>
-      <div className={'w-10 h-10 rounded-full flex items-center justify-center ' + (quiet ? 'bg-amber-200 text-amber-800' : 'bg-emerald-100 text-emerald-700')}><IconClock/></div>
-      <div className="flex-1">
-        <p className="font-semibold text-slate-900">{quiet ? 'Quiet hours actives' : 'Fenêtre d envoi ouverte'}</p>
-        <p className="text-xs text-slate-600">{quiet ? 'Bloqué par les réglages actuels' : 'SMS autorisés'}</p>
-      </div>
-    </Card>
+    <Card className={'p-4 flex items-center gap-3 ' + (quiet ? 'border-amber-300 bg-amber-50' : '')}><div className={'w-10 h-10 rounded-full flex items-center justify-center ' + (quiet ? 'bg-amber-200 text-amber-800' : 'bg-emerald-100 text-emerald-700')}><IconClock/></div><div className="flex-1"><p className="font-semibold text-slate-900">{quiet ? 'Quiet hours actives' : 'Fenêtre d envoi ouverte'}</p><p className="text-xs text-slate-600">{quiet ? 'Bloqué par les réglages' : 'SMS autorisés'}</p></div></Card>
     <div className="grid grid-cols-2 gap-3">
       <Card className="p-4"><p className="text-xs text-slate-500">Éligibles</p><p className="text-2xl font-bold text-slate-900">{stats.total_eligible}</p></Card>
       <Card className="p-4"><p className="text-xs text-slate-500">Jamais contactés</p><p className="text-2xl font-bold text-indigo-600">{stats.never_contacted}</p></Card>
       <Card className="p-4"><p className="text-xs text-slate-500">En attente</p><p className="text-2xl font-bold text-amber-600">{stats.sent_awaiting_reply}</p></Card>
       <Card className="p-4"><p className="text-xs text-slate-500">Ont répondu</p><p className="text-2xl font-bold text-emerald-600">{stats.replied}</p></Card>
       <Card className="p-4"><p className="text-xs text-slate-500">Opt-outs</p><p className="text-2xl font-bold text-rose-600">{stats.opted_out}</p></Card>
-      <Card className="p-4"><p className="text-xs text-slate-500">Follow-ups dus</p><p className="text-2xl font-bold text-slate-900">{stats.follow_ups_due}</p></Card>
+      <Card className="p-4"><p className="text-xs text-slate-500">Sugg. à review</p><p className="text-2xl font-bold text-violet-600">{pendingSugg}</p></Card>
     </div>
-    <Card className="p-4">
-      <p className="font-semibold text-slate-900 mb-3">Activité 24h</p>
-      <div className="flex gap-4">
-        <div className="flex-1"><p className="text-xs text-slate-500">Envoyés</p><p className="text-xl font-bold">{stats.sent_last_24h}</p></div>
-        <div className="flex-1"><p className="text-xs text-slate-500">Reçus</p><p className="text-xl font-bold">{stats.received_last_24h}</p></div>
-      </div>
-    </Card>
-    <Card className="p-4">
-      <p className="font-semibold text-slate-900 mb-3">Envoi rapide</p>
-      <div className="space-y-3">
-        <Input label="Numéro E.164" value={qs.phone} onChange={v => setQs({ ...qs, phone: v })} placeholder="+15145551234"/>
-        <TextArea label="Message" value={qs.body} onChange={v => setQs({ ...qs, body: v })} placeholder="Bonjour..." rows={3}/>
-        <Button onClick={send} disabled={sending || !qs.phone || !qs.body} className="w-full"><IconSend className="w-4 h-4"/>{sending ? 'Envoi...' : 'Envoyer'}</Button>
-      </div>
-    </Card>
-    <Card className="p-4">
-      <div className="flex items-center justify-between mb-3">
-        <p className="font-semibold text-slate-900">Vérification système</p>
-        <Button variant="secondary" onClick={runHealth} disabled={busy}><IconRefresh className="w-4 h-4"/>{busy ? '...' : 'Tester'}</Button>
-      </div>
-      {health && (<div className="space-y-1 text-sm">
-        <Row k="Twilio SID" v={health.checks.twilio_account_sid}/>
-        <Row k="Twilio Token" v={health.checks.twilio_auth_token}/>
-        <Row k="Twilio From" v={health.checks.twilio_from}/>
-        <Row k="DB accessible" v={health.checks.db_accessible}/>
-        <Row k="API Twilio" v={health.checks.twilio_api_reachable}/>
-        {health.checks.twilio_account_friendly_name && <p className="text-xs text-slate-500 mt-2">Compte: {health.checks.twilio_account_friendly_name}</p>}
-      </div>)}
-    </Card>
+    <Card className="p-4"><p className="font-semibold text-slate-900 mb-3">Activité 24h</p><div className="flex gap-4"><div className="flex-1"><p className="text-xs text-slate-500">Envoyés</p><p className="text-xl font-bold">{stats.sent_last_24h}</p></div><div className="flex-1"><p className="text-xs text-slate-500">Reçus</p><p className="text-xl font-bold">{stats.received_last_24h}</p></div></div></Card>
+    {costs && (<Card className="p-4"><div className="flex items-center gap-2 mb-3"><IconSparkle className="w-4 h-4 text-violet-600"/><p className="font-semibold text-slate-900">Coûts IA Anthropic</p></div><div className="grid grid-cols-3 gap-3 text-sm"><div><p className="text-xs text-slate-500">24h</p><p className="font-bold text-violet-600">{fmtCost(costs.cost_24h_usd || 0)}</p></div><div><p className="text-xs text-slate-500">7j</p><p className="font-bold text-violet-600">{fmtCost(costs.cost_7d_usd || 0)}</p></div><div><p className="text-xs text-slate-500">30j</p><p className="font-bold text-violet-600">{fmtCost(costs.cost_30d_usd || 0)}</p></div></div><div className="flex gap-3 mt-2 text-xs text-slate-500 border-t pt-2"><span>Appels: <strong>{costs.calls_total || 0}</strong></span><span>Cache hit: <strong>{costs.cache_hit_rate_pct || 0}%</strong></span></div></Card>)}
+    <Card className="p-4"><p className="font-semibold text-slate-900 mb-3">Envoi rapide</p><div className="space-y-3"><Input label="Numéro E.164" value={qs.phone} onChange={v => setQs({ ...qs, phone: v })} placeholder="+15145551234"/><TextArea label="Message" value={qs.body} onChange={v => setQs({ ...qs, body: v })} placeholder="Bonjour..." rows={3}/><Button onClick={send} disabled={sending || !qs.phone || !qs.body} className="w-full"><IconSend className="w-4 h-4"/>{sending ? 'Envoi...' : 'Envoyer'}</Button></div></Card>
+    <Card className="p-4"><div className="flex items-center justify-between mb-3"><p className="font-semibold text-slate-900">Vérification système</p><Button variant="secondary" onClick={runHealth} disabled={busy}><IconRefresh className="w-4 h-4"/>{busy ? '...' : 'Tester'}</Button></div>{health && (<div className="space-y-1 text-sm"><Row k="Twilio SID" v={health.checks.twilio_account_sid}/><Row k="Twilio Token" v={health.checks.twilio_auth_token}/><Row k="Twilio From" v={health.checks.twilio_from}/><Row k="DB accessible" v={health.checks.db_accessible}/><Row k="API Twilio" v={health.checks.twilio_api_reachable}/>{health.checks.twilio_account_friendly_name && <p className="text-xs text-slate-500 mt-2">Compte: {health.checks.twilio_account_friendly_name}</p>}</div>)}</Card>
   </div>);
 }
 
+// =====================================================================
+// LEADS
+// =====================================================================
 function LeadActions({ lead, onSend, onOptOut }) {
   const [body, setBody] = useState('');
-  return (<div className="px-4 pb-4 border-t border-slate-100 pt-3 space-y-3">
-    <TextArea value={body} onChange={setBody} placeholder="Message à envoyer..." rows={2}/>
-    <div className="flex gap-2">
-      <Button onClick={() => { onSend(lead, body); setBody(''); }} disabled={!body} className="flex-1"><IconSend className="w-4 h-4"/>Envoyer</Button>
-      <Button variant="danger" onClick={() => onOptOut(lead)}><IconBan className="w-4 h-4"/></Button>
-    </div>
-  </div>);
+  return (<div className="px-4 pb-4 border-t border-slate-100 pt-3 space-y-3"><TextArea value={body} onChange={setBody} placeholder="Message à envoyer..." rows={2}/><div className="flex gap-2"><Button onClick={() => { onSend(lead, body); setBody(''); }} disabled={!body} className="flex-1"><IconSend className="w-4 h-4"/>Envoyer</Button><Button variant="danger" onClick={() => onOptOut(lead)}><IconBan className="w-4 h-4"/></Button></div></div>);
 }
-
 function LeadsTab({ api, toast }) {
   const [filter, setFilter] = useState('contactable');
   const [search, setSearch] = useState('');
@@ -280,15 +213,13 @@ function LeadsTab({ api, toast }) {
   const [expanded, setExpanded] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
   const PAGE_SIZE = 20;
-
   const load = useCallback(async () => {
     setLoading(true);
     try {
       let path = '/leads?select=id,company_name,contact_name,phone_e164,priority_tier,pipeline_stage,reply_status,last_sent_at,overall_need_score';
       path += '&order=overall_need_score.desc.nullslast,last_sent_at.desc.nullslast';
       path += '&limit=' + PAGE_SIZE + '&offset=' + (page * PAGE_SIZE);
-      path += '&phone_e164=like.%2B*';
-      path += '&eligible_sms=eq.true';
+      path += '&phone_e164=like.%2B*&eligible_sms=eq.true';
       if (filter === 'never') path += '&last_sent_at=is.null';
       else if (filter === 'awaiting') path += '&last_sent_at=not.is.null&reply_status=is.null';
       else if (filter === 'replied') path += '&reply_status=eq.replied';
@@ -296,268 +227,197 @@ function LeadsTab({ api, toast }) {
       else if (filter === 'warm') path += '&priority_tier=eq.B%20-%20Warm%20Lead';
       if (filter !== 'replied') path += '&or=(reply_status.is.null,reply_status.eq.no_reply)';
       if (search) path += '&company_name=ilike.*' + encodeURIComponent(search) + '*';
-      const list = await api.rest(path);
-      setItems(list || []);
+      setItems(await api.rest(path) || []);
     } catch (e) { toast(e.message, 'error'); }
     finally { setLoading(false); }
   }, [api, filter, search, page]);
   useEffect(() => { setPage(0); }, [filter, search]);
   useEffect(() => { load(); }, [load]);
-
-  const sendOne = async (lead, body) => {
-    if (!body) return;
-    try { await api.fn('send-sms', { lead_id: lead.id, body }); toast('Envoyé à ' + (lead.company_name || lead.phone_e164)); load(); }
-    catch (e) { toast('Erreur: ' + e.message, 'error'); }
-  };
-  const optOutOne = async (lead) => {
-    if (!confirm('Marquer ' + (lead.company_name || lead.phone_e164) + ' comme opt-out?')) return;
-    try { await api.rpc('add_manual_opt_out', { p_phone: lead.phone_e164, p_reason: 'manual_dashboard' }); toast('Opt-out ajouté'); load(); }
-    catch (e) { toast(e.message, 'error'); }
-  };
-  const filters = [
-    { id: 'contactable', label: 'Contactables' }, { id: 'never', label: 'Jamais contactés' },
-    { id: 'awaiting', label: 'En attente' }, { id: 'replied', label: 'Ont répondu' },
-    { id: 'hot', label: 'Hot' }, { id: 'warm', label: 'Warm' },
-  ];
-
+  const sendOne = async (lead, body) => { if (!body) return; try { await api.fn('send-sms', { lead_id: lead.id, body }); toast('Envoyé à ' + (lead.company_name || lead.phone_e164)); load(); } catch (e) { toast('Erreur: ' + e.message, 'error'); } };
+  const optOutOne = async (lead) => { if (!confirm('Marquer ' + (lead.company_name || lead.phone_e164) + ' comme opt-out?')) return; try { await api.rpc('add_manual_opt_out', { p_phone: lead.phone_e164, p_reason: 'manual_dashboard' }); toast('Opt-out ajouté'); load(); } catch (e) { toast(e.message, 'error'); } };
+  const filters = [{ id: 'contactable', label: 'Contactables' }, { id: 'never', label: 'Jamais contactés' }, { id: 'awaiting', label: 'En attente' }, { id: 'replied', label: 'Ont répondu' }, { id: 'hot', label: 'Hot' }, { id: 'warm', label: 'Warm' }];
   return (<div className="space-y-4 relative">
     <Input value={search} onChange={setSearch} placeholder="Rechercher une entreprise..."/>
-    <div className="flex gap-2 overflow-x-auto scrollbar-thin -mx-4 px-4 pb-1">
-      {filters.map(f => (
-        <button key={f.id} onClick={() => setFilter(f.id)}
-          className={'shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition ' + (filter === f.id ? 'bg-indigo-600 text-white' : 'bg-white border border-slate-200 text-slate-700')}>{f.label}</button>
-      ))}
-    </div>
+    <div className="flex gap-2 overflow-x-auto scrollbar-thin -mx-4 px-4 pb-1">{filters.map(f => (<button key={f.id} onClick={() => setFilter(f.id)} className={'shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition ' + (filter === f.id ? 'bg-indigo-600 text-white' : 'bg-white border border-slate-200 text-slate-700')}>{f.label}</button>))}</div>
     {loading && <div className="p-8 text-center text-slate-500">Chargement...</div>}
     {!loading && items.length === 0 && <div className="p-8 text-center text-slate-500">Aucun lead</div>}
-    <div className="space-y-2">
-      {items.map(l => (
-        <Card key={l.id} className="overflow-hidden">
-          <button onClick={() => setExpanded(expanded === l.id ? null : l.id)} className="w-full text-left p-4 flex items-start justify-between gap-3">
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-slate-900 truncate">{l.company_name || '(Sans nom)'}</p>
-              <p className="text-sm text-slate-500 truncate">{l.contact_name || '—'} · {l.phone_e164}</p>
-              <div className="flex flex-wrap gap-1 mt-1.5">
-                {l.priority_tier && <Badge color={tierColor(l.priority_tier)}>{l.priority_tier.split(' - ')[0]}</Badge>}
-                {l.pipeline_stage && <Badge color="slate">{l.pipeline_stage}</Badge>}
-                {l.last_sent_at && <Badge color="slate">Envoyé {fmtRelative(l.last_sent_at)}</Badge>}
-                {l.reply_status === 'replied' && <Badge color="emerald">A répondu</Badge>}
-              </div>
-            </div>
-            <IconChevron className={'w-5 h-5 text-slate-400 transition shrink-0 ' + (expanded === l.id ? 'rotate-90' : '')}/>
-          </button>
-          {expanded === l.id && <LeadActions lead={l} onSend={sendOne} onOptOut={optOutOne}/>}
-        </Card>
-      ))}
-    </div>
-    <div className="flex items-center justify-between">
-      <Button variant="secondary" onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0 || loading}>Précédent</Button>
-      <span className="text-sm text-slate-500">Page {page + 1}</span>
-      <Button variant="secondary" onClick={() => setPage(page + 1)} disabled={items.length < PAGE_SIZE || loading}>Suivant</Button>
-    </div>
+    <div className="space-y-2">{items.map(l => (<Card key={l.id} className="overflow-hidden"><button onClick={() => setExpanded(expanded === l.id ? null : l.id)} className="w-full text-left p-4 flex items-start justify-between gap-3"><div className="flex-1 min-w-0"><p className="font-semibold text-slate-900 truncate">{l.company_name || '(Sans nom)'}</p><p className="text-sm text-slate-500 truncate">{l.contact_name || '—'} · {l.phone_e164}</p><div className="flex flex-wrap gap-1 mt-1.5">{l.priority_tier && <Badge color={tierColor(l.priority_tier)}>{l.priority_tier.split(' - ')[0]}</Badge>}{l.pipeline_stage && <Badge color="slate">{l.pipeline_stage}</Badge>}{l.last_sent_at && <Badge color="slate">Envoyé {fmtRelative(l.last_sent_at)}</Badge>}{l.reply_status === 'replied' && <Badge color="emerald">A répondu</Badge>}</div></div><IconChevron className={'w-5 h-5 text-slate-400 transition shrink-0 ' + (expanded === l.id ? 'rotate-90' : '')}/></button>{expanded === l.id && <LeadActions lead={l} onSend={sendOne} onOptOut={optOutOne}/>}</Card>))}</div>
+    <div className="flex items-center justify-between"><Button variant="secondary" onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0 || loading}>Précédent</Button><span className="text-sm text-slate-500">Page {page + 1}</span><Button variant="secondary" onClick={() => setPage(page + 1)} disabled={items.length < PAGE_SIZE || loading}>Suivant</Button></div>
     <button onClick={() => setShowAdd(true)} className="fixed bottom-24 right-4 w-14 h-14 rounded-full bg-indigo-600 text-white shadow-lg flex items-center justify-center hover:bg-indigo-700 active:scale-95 z-40"><IconPlus className="w-6 h-6"/></button>
     <AddLeadModal open={showAdd} onClose={() => setShowAdd(false)} api={api} toast={toast} onAdded={() => { setShowAdd(false); load(); }}/>
   </div>);
 }
-
 function AddLeadModal({ open, onClose, api, toast, onAdded }) {
   const [form, setForm] = useState({ company_name: '', contact_name: '', phone_e164: '', email: '', personalized_hook: '', priority_tier: '' });
   const [busy, setBusy] = useState(false);
   const submit = async () => {
-    if (!form.phone_e164) return toast('Numéro requis', 'warn');
-    if (!form.phone_e164.startsWith('+')) return toast('Numéro doit être au format E.164 (ex: +15145551234)', 'warn');
+    if (!form.phone_e164 || !form.phone_e164.startsWith('+')) return toast('Numéro E.164 requis (avec +)', 'warn');
     setBusy(true);
-    try {
-      await api.insert('leads', {
-        company_name: form.company_name || null,
-        contact_name: form.contact_name || null,
-        phone_e164: form.phone_e164,
-        email: form.email || null,
-        personalized_hook: form.personalized_hook || null,
-        priority_tier: form.priority_tier || null,
-        eligible_sms: true,
-      });
-      toast('Lead ajouté');
-      setForm({ company_name: '', contact_name: '', phone_e164: '', email: '', personalized_hook: '', priority_tier: '' });
-      onAdded();
-    } catch (e) { toast('Erreur: ' + e.message, 'error'); }
+    try { await api.insert('leads', { company_name: form.company_name || null, contact_name: form.contact_name || null, phone_e164: form.phone_e164, email: form.email || null, personalized_hook: form.personalized_hook || null, priority_tier: form.priority_tier || null, eligible_sms: true });
+      toast('Lead ajouté'); setForm({ company_name: '', contact_name: '', phone_e164: '', email: '', personalized_hook: '', priority_tier: '' }); onAdded(); }
+    catch (e) { toast('Erreur: ' + e.message, 'error'); }
     finally { setBusy(false); }
   };
-  return (<Modal open={open} onClose={onClose} title="Nouveau lead">
-    <div className="space-y-3">
-      <Input label="Numéro E.164*" value={form.phone_e164} onChange={v => setForm({ ...form, phone_e164: v })} placeholder="+15145551234" helper="Format obligatoire avec +"/>
-      <Input label="Nom de l'entreprise" value={form.company_name} onChange={v => setForm({ ...form, company_name: v })} placeholder="Acme Inc."/>
-      <Input label="Nom du contact" value={form.contact_name} onChange={v => setForm({ ...form, contact_name: v })} placeholder="Marie Tremblay"/>
-      <Input label="Email" value={form.email} onChange={v => setForm({ ...form, email: v })} placeholder="marie@acme.com" type="email"/>
-      <Input label="Hook personnalisé" value={form.personalized_hook} onChange={v => setForm({ ...form, personalized_hook: v })} placeholder="votre site est en HTTP non sécurisé"/>
-      <Input label="Tier (optionnel)" value={form.priority_tier} onChange={v => setForm({ ...form, priority_tier: v })} placeholder="A - Hot Lead"/>
-      <div className="flex gap-2 pt-2">
-        <Button variant="secondary" onClick={onClose} className="flex-1">Annuler</Button>
-        <Button onClick={submit} disabled={busy} className="flex-1">{busy ? 'Ajout...' : 'Ajouter'}</Button>
-      </div>
-    </div>
-  </Modal>);
+  return (<Modal open={open} onClose={onClose} title="Nouveau lead"><div className="space-y-3"><Input label="Numéro E.164*" value={form.phone_e164} onChange={v => setForm({ ...form, phone_e164: v })} placeholder="+15145551234"/><Input label="Entreprise" value={form.company_name} onChange={v => setForm({ ...form, company_name: v })}/><Input label="Contact" value={form.contact_name} onChange={v => setForm({ ...form, contact_name: v })}/><Input label="Email" value={form.email} onChange={v => setForm({ ...form, email: v })}/><Input label="Hook personnalisé" value={form.personalized_hook} onChange={v => setForm({ ...form, personalized_hook: v })}/><Input label="Tier" value={form.priority_tier} onChange={v => setForm({ ...form, priority_tier: v })} placeholder="A - Hot Lead"/><div className="flex gap-2 pt-2"><Button variant="secondary" onClick={onClose} className="flex-1">Annuler</Button><Button onClick={submit} disabled={busy} className="flex-1">{busy ? '...' : 'Ajouter'}</Button></div></div></Modal>);
 }
 
+// =====================================================================
+// CAMPAIGNS
+// =====================================================================
 function CampaignsTab({ api, toast }) {
   const [campaigns, setCampaigns] = useState([]);
   const [showCreate, setShowCreate] = useState(false);
   const [selected, setSelected] = useState(null);
-  const load = useCallback(async () => {
-    try { setCampaigns(await api.rest('/v_campaigns_overview?select=*&order=created_at.desc&limit=50') || []); }
-    catch (e) { toast(e.message, 'error'); }
-  }, [api]);
+  const load = useCallback(async () => { try { setCampaigns(await api.rest('/v_campaigns_overview?select=*&order=created_at.desc&limit=50') || []); } catch (e) { toast(e.message, 'error'); } }, [api]);
   useEffect(() => { load(); }, [load]);
-  const statusColor = s => s === 'running' ? 'amber' : s === 'completed' ? 'emerald' : s === 'ready' ? 'indigo' : s === 'failed' ? 'rose' : 'slate';
+  const statusColor = s => s === 'running' ? 'amber' : s === 'completed' ? 'emerald' : s === 'ready' ? 'indigo' : 'slate';
   if (selected) return <CampaignDetail campaign={selected} api={api} toast={toast} onBack={() => { setSelected(null); load(); }}/>;
   return (<div className="space-y-4 relative">
     {campaigns.length === 0 && <Card className="p-8 text-center text-slate-500"><IconMegaphone className="w-12 h-12 mx-auto mb-2 text-slate-300"/><p>Aucune campagne</p><p className="text-xs mt-1">Crée ta première campagne avec le bouton +</p></Card>}
-    <div className="space-y-2">
-      {campaigns.map(c => (
-        <Card key={c.id}>
-          <button onClick={() => setSelected(c)} className="w-full text-left p-4">
-            <div className="flex items-start justify-between gap-2">
-              <p className="font-semibold text-slate-900 truncate flex-1">{c.name}</p>
-              <Badge color={statusColor(c.status)}>{c.status}</Badge>
-            </div>
-            {c.description && <p className="text-xs text-slate-500 mt-1">{c.description}</p>}
-            <div className="flex gap-3 mt-2 text-xs text-slate-500">
-              <span>Cibles: <strong className="text-slate-700">{c.total_targeted}</strong></span>
-              <span>Envoyés: <strong className="text-emerald-600">{c.sent}</strong></span>
-              <span>Pending: <strong className="text-indigo-600">{c.pending}</strong></span>
-              {c.failed > 0 && <span>Échecs: <strong className="text-rose-600">{c.failed}</strong></span>}
-            </div>
-          </button>
-        </Card>
-      ))}
-    </div>
+    <div className="space-y-2">{campaigns.map(c => (<Card key={c.id}><button onClick={() => setSelected(c)} className="w-full text-left p-4"><div className="flex items-start justify-between gap-2"><p className="font-semibold text-slate-900 truncate flex-1">{c.name}</p><div className="flex gap-1">{c.mode === 'ai_generated' && <Badge color="violet"><IconSparkle className="w-3 h-3 inline"/> IA</Badge>}<Badge color={statusColor(c.status)}>{c.status}</Badge></div></div>{c.description && <p className="text-xs text-slate-500 mt-1">{c.description}</p>}<div className="flex flex-wrap gap-3 mt-2 text-xs text-slate-500"><span>Cibles: <strong className="text-slate-700">{c.total_targeted}</strong></span><span>Envoyés: <strong className="text-emerald-600">{c.sent}</strong></span><span>Pending: <strong className="text-indigo-600">{c.pending}</strong></span>{c.failed > 0 && <span>Échecs: <strong className="text-rose-600">{c.failed}</strong></span>}</div></button></Card>))}</div>
     <button onClick={() => setShowCreate(true)} className="fixed bottom-24 right-4 w-14 h-14 rounded-full bg-indigo-600 text-white shadow-lg flex items-center justify-center hover:bg-indigo-700 active:scale-95 z-40"><IconPlus className="w-6 h-6"/></button>
     <CreateCampaignModal open={showCreate} onClose={() => setShowCreate(false)} api={api} toast={toast} onCreated={() => { setShowCreate(false); load(); }}/>
   </div>);
 }
-
 function CreateCampaignModal({ open, onClose, api, toast, onCreated }) {
-  const [form, setForm] = useState({ name: '', description: '', message_template: '', filter_priority_tier: '', filter_pipeline_stage: '', filter_only_uncontacted: true, filter_min_score: '', filter_max_score: '', filter_company_keyword: '' });
+  const [mode, setMode] = useState('ai_generated');
+  const [form, setForm] = useState({ name: '', description: '', message_template: '', campaign_brief: 'Ton direct, factuel. Approche curieuse, presque amicale, pas vendeuse. PME francophones du QC.', filter_priority_tier: '', filter_pipeline_stage: '', filter_only_uncontacted: true, filter_min_score: '', filter_max_score: '', filter_company_keyword: '' });
   const [preview, setPreview] = useState(null);
   const [busy, setBusy] = useState(false);
   const variables = ['{{company_name}}', '{{contact_name}}', '{{first_name}}', '{{personalized_hook}}', '{{site_notes}}', '{{priority_tier}}'];
-  const insertVar = (v) => setForm({ ...form, message_template: form.message_template + v });
+  const insertVar = v => setForm({ ...form, message_template: form.message_template + v });
   const buildArgs = () => ({
-    p_template: form.message_template,
-    p_filter_priority_tier: form.filter_priority_tier || null,
-    p_filter_pipeline_stage: form.filter_pipeline_stage || null,
-    p_filter_only_uncontacted: form.filter_only_uncontacted,
+    p_template: form.message_template, p_filter_priority_tier: form.filter_priority_tier || null,
+    p_filter_pipeline_stage: form.filter_pipeline_stage || null, p_filter_only_uncontacted: form.filter_only_uncontacted,
     p_filter_min_score: form.filter_min_score ? parseInt(form.filter_min_score, 10) : null,
     p_filter_max_score: form.filter_max_score ? parseInt(form.filter_max_score, 10) : null,
     p_filter_company_keyword: form.filter_company_keyword || null,
   });
   const doPreview = async () => {
-    if (!form.message_template) return toast('Template requis', 'warn');
+    if (mode === 'template' && !form.message_template) return toast('Template requis', 'warn');
     setBusy(true);
-    try { setPreview(await api.rpc('preview_campaign', { ...buildArgs(), p_limit: 5 })); }
-    catch (e) { toast(e.message, 'error'); }
+    try {
+      if (mode === 'template') setPreview(await api.rpc('preview_campaign', { ...buildArgs(), p_limit: 5 }));
+      else {
+        // En mode AI on peut juste compter les leads matchant via preview_campaign avec un template bidon
+        const r = await api.rpc('preview_campaign', { ...buildArgs(), p_template: '(généré par IA)', p_limit: 1 });
+        setPreview(r);
+      }
+    } catch (e) { toast(e.message, 'error'); }
     finally { setBusy(false); }
   };
   const create = async () => {
-    if (!form.name || !form.message_template) return toast('Nom et template requis', 'warn');
+    if (!form.name) return toast('Nom requis', 'warn');
+    if (mode === 'template' && !form.message_template) return toast('Template requis', 'warn');
+    if (mode === 'ai_generated' && !form.campaign_brief) return toast('Brief requis pour mode IA', 'warn');
     setBusy(true);
     try {
-      const inserted = await api.insert('campaigns', {
-        name: form.name, description: form.description || null,
-        message_template: form.message_template,
-        filter_priority_tier: form.filter_priority_tier || null,
-        filter_pipeline_stage: form.filter_pipeline_stage || null,
+      await api.insert('campaigns', {
+        name: form.name, description: form.description || null, mode,
+        message_template: mode === 'template' ? form.message_template : null,
+        campaign_brief: mode === 'ai_generated' ? form.campaign_brief : null,
+        filter_priority_tier: form.filter_priority_tier || null, filter_pipeline_stage: form.filter_pipeline_stage || null,
         filter_only_uncontacted: form.filter_only_uncontacted,
         filter_min_score: form.filter_min_score ? parseInt(form.filter_min_score, 10) : null,
         filter_max_score: form.filter_max_score ? parseInt(form.filter_max_score, 10) : null,
-        filter_company_keyword: form.filter_company_keyword || null,
-        status: 'draft',
+        filter_company_keyword: form.filter_company_keyword || null, status: 'draft',
       });
-      toast('Campagne créée');
-      onCreated();
+      toast('Campagne créée'); onCreated();
     } catch (e) { toast(e.message, 'error'); }
     finally { setBusy(false); }
   };
-  return (<Modal open={open} onClose={onClose} title="Nouvelle campagne">
-    <div className="space-y-3">
-      <Input label="Nom*" value={form.name} onChange={v => setForm({ ...form, name: v })} placeholder="Hot leads Avril 2026"/>
-      <Input label="Description" value={form.description} onChange={v => setForm({ ...form, description: v })} placeholder="Premier contact pour les A-Hot Leads"/>
-      <TextArea label="Message template*" value={form.message_template} onChange={v => setForm({ ...form, message_template: v })} rows={4} placeholder="Bonjour {{first_name}}, j'ai vu que {{personalized_hook}}. Curieux d'en discuter?" helper="Variables: voir les boutons ci-dessous"/>
-      <div className="flex flex-wrap gap-1">{variables.map(v => <button key={v} onClick={() => insertVar(v)} className="text-xs px-2 py-1 bg-indigo-50 text-indigo-700 rounded">{v}</button>)}</div>
-      <div className="text-xs font-medium text-slate-500 pt-2">Filtres</div>
-      <Input label="Priority Tier" value={form.filter_priority_tier} onChange={v => setForm({ ...form, filter_priority_tier: v })} placeholder="A - Hot Lead"/>
-      <Input label="Pipeline Stage" value={form.filter_pipeline_stage} onChange={v => setForm({ ...form, filter_pipeline_stage: v })} placeholder="Vide pour tous"/>
-      <div className="grid grid-cols-2 gap-2">
-        <Input label="Score min" value={form.filter_min_score} onChange={v => setForm({ ...form, filter_min_score: v })} type="number"/>
-        <Input label="Score max" value={form.filter_max_score} onChange={v => setForm({ ...form, filter_max_score: v })} type="number"/>
-      </div>
-      <Input label="Mot-clé dans le nom (opt.)" value={form.filter_company_keyword} onChange={v => setForm({ ...form, filter_company_keyword: v })}/>
-      <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.filter_only_uncontacted} onChange={e => setForm({ ...form, filter_only_uncontacted: e.target.checked })}/>Seulement leads jamais contactés</label>
-      <Button variant="secondary" onClick={doPreview} disabled={busy} className="w-full"><IconEye className="w-4 h-4"/>{busy ? '...' : 'Aperçu'}</Button>
-      {preview && preview.length > 0 && (<Card className="p-3 bg-slate-50"><p className="text-sm font-semibold mb-2">{preview[0].total_matching} leads correspondent</p><div className="space-y-2 max-h-48 overflow-y-auto">{preview.map(p => (<div key={p.lead_id} className="text-xs bg-white p-2 rounded"><p className="font-medium text-slate-900">{p.company_name || '—'} ({p.rendered_length} car.)</p><p className="text-slate-600 mt-1 whitespace-pre-wrap">{p.rendered_body}</p></div>))}</div></Card>)}
-      {preview && preview.length === 0 && <div className="text-sm text-amber-700 bg-amber-50 p-2 rounded">Aucun lead correspondant</div>}
-      <div className="flex gap-2 pt-2">
-        <Button variant="secondary" onClick={onClose} className="flex-1">Annuler</Button>
-        <Button onClick={create} disabled={busy} className="flex-1">Créer</Button>
-      </div>
-    </div>
-  </Modal>);
+  return (<Modal open={open} onClose={onClose} title="Nouvelle campagne"><div className="space-y-3">
+    <div className="flex gap-2 p-1 bg-slate-100 rounded-xl"><button onClick={() => setMode('ai_generated')} className={'flex-1 py-2 rounded-lg text-sm font-medium transition flex items-center justify-center gap-1 ' + (mode === 'ai_generated' ? 'bg-white shadow text-violet-700' : 'text-slate-600')}><IconSparkle className="w-4 h-4"/>Généré par IA</button><button onClick={() => setMode('template')} className={'flex-1 py-2 rounded-lg text-sm font-medium transition ' + (mode === 'template' ? 'bg-white shadow text-indigo-700' : 'text-slate-600')}>Template</button></div>
+    <Input label="Nom*" value={form.name} onChange={v => setForm({ ...form, name: v })} placeholder="Hot leads Avril"/>
+    <Input label="Description" value={form.description} onChange={v => setForm({ ...form, description: v })}/>
+    {mode === 'template' && (<><TextArea label="Message template*" value={form.message_template} onChange={v => setForm({ ...form, message_template: v })} rows={4} placeholder="Salut {{first_name}}, j'ai vu {{personalized_hook}}..." mono helper="Variables disponibles ci-dessous"/><div className="flex flex-wrap gap-1">{variables.map(v => <button key={v} onClick={() => insertVar(v)} className="text-xs px-2 py-1 bg-indigo-50 text-indigo-700 rounded">{v}</button>)}</div></>)}
+    {mode === 'ai_generated' && (<TextArea label="Brief de campagne*" value={form.campaign_brief} onChange={v => setForm({ ...form, campaign_brief: v })} rows={4} helper="Instructions pour l'IA: ton, style, angle. Chaque SMS sera unique."/>)}
+    <div className="text-xs font-medium text-slate-500 pt-2">Filtres</div>
+    <Input label="Priority Tier" value={form.filter_priority_tier} onChange={v => setForm({ ...form, filter_priority_tier: v })} placeholder="A - Hot Lead"/>
+    <Input label="Pipeline Stage" value={form.filter_pipeline_stage} onChange={v => setForm({ ...form, filter_pipeline_stage: v })}/>
+    <div className="grid grid-cols-2 gap-2"><Input label="Score min" value={form.filter_min_score} onChange={v => setForm({ ...form, filter_min_score: v })} type="number"/><Input label="Score max" value={form.filter_max_score} onChange={v => setForm({ ...form, filter_max_score: v })} type="number"/></div>
+    <Input label="Mot-clé nom (opt.)" value={form.filter_company_keyword} onChange={v => setForm({ ...form, filter_company_keyword: v })}/>
+    <Toggle checked={form.filter_only_uncontacted} onChange={v => setForm({ ...form, filter_only_uncontacted: v })} label="Seulement leads jamais contactés"/>
+    <Button variant="secondary" onClick={doPreview} disabled={busy} className="w-full"><IconEye className="w-4 h-4"/>{busy ? '...' : 'Aperçu du ciblage'}</Button>
+    {preview && preview.length > 0 && (<Card className="p-3 bg-slate-50"><p className="text-sm font-semibold mb-2">{preview[0].total_matching} leads correspondent</p>{mode === 'template' && <div className="space-y-2 max-h-48 overflow-y-auto">{preview.map(p => (<div key={p.lead_id} className="text-xs bg-white p-2 rounded"><p className="font-medium text-slate-900">{p.company_name || '—'} ({p.rendered_length} car.)</p><p className="text-slate-600 mt-1 whitespace-pre-wrap">{p.rendered_body}</p></div>))}</div>}{mode === 'ai_generated' && <p className="text-xs text-slate-500">Les SMS uniques seront générés après matérialisation (bouton "Préparer" puis "Générer aperçus").</p>}</Card>)}
+    {preview && preview.length === 0 && <div className="text-sm text-amber-700 bg-amber-50 p-2 rounded">Aucun lead correspondant</div>}
+    <div className="flex gap-2 pt-2"><Button variant="secondary" onClick={onClose} className="flex-1">Annuler</Button><Button onClick={create} disabled={busy} className="flex-1">Créer</Button></div>
+  </div></Modal>);
 }
-
 function CampaignDetail({ campaign, api, toast, onBack }) {
   const [c, setC] = useState(campaign);
   const [busy, setBusy] = useState(false);
-  const reload = async () => {
-    try { const r = await api.rest('/v_campaigns_overview?id=eq.' + c.id + '&select=*&limit=1'); if (r && r[0]) setC(r[0]); }
-    catch (e) { toast(e.message, 'error'); }
-  };
-  const materialize = async () => {
-    setBusy(true);
-    try { const n = await api.rpc('materialize_campaign_recipients', { p_campaign_id: c.id }); toast(n + ' recipients prêts'); reload(); }
-    catch (e) { toast(e.message, 'error'); }
-    finally { setBusy(false); }
-  };
-  const launch = async (dryRun) => {
-    setBusy(true);
-    try {
-      const r = await api.fn('process-campaign', { campaign_id: c.id, limit: 50, dry_run: dryRun });
-      if (dryRun) toast('Dry-run: ' + (r.would_process || 0) + ' à traiter');
-      else toast('Envoyés: ' + (r.sent_ok || 0) + ' / Skipped: ' + (r.skipped || 0) + ' / Erreurs: ' + (r.errors || 0));
-      reload();
-    } catch (e) { toast(e.message, 'error'); }
-    finally { setBusy(false); }
-  };
-  const archive = async () => {
-    if (!confirm('Archiver cette campagne?')) return;
-    try { await api.update('campaigns', 'id=eq.' + c.id, { status: 'archived' }); toast('Archivée'); onBack(); }
-    catch (e) { toast(e.message, 'error'); }
-  };
+  const [recipients, setRecipients] = useState([]);
+  const [showRecipients, setShowRecipients] = useState(false);
+  const reload = async () => { try { const r = await api.rest('/v_campaigns_overview?id=eq.' + c.id + '&select=*&limit=1'); if (r && r[0]) setC(r[0]); } catch (e) { toast(e.message, 'error'); } };
+  const loadRecipients = async () => { try { const r = await api.rest('/campaign_recipients?campaign_id=eq.' + c.id + '&select=id,lead_id,status,rendered_body,error_message&order=created_at.asc&limit=100'); setRecipients(r || []); } catch (e) { toast(e.message, 'error'); } };
+  useEffect(() => { if (showRecipients) loadRecipients(); }, [showRecipients, c.pending, c.sent]);
+  const materialize = async () => { setBusy(true); try { const n = await api.rpc('materialize_campaign_recipients', { p_campaign_id: c.id }); toast(n + ' recipients prêts'); reload(); } catch (e) { toast(e.message, 'error'); } finally { setBusy(false); } };
+  const generatePreviews = async () => { setBusy(true); try { const r = await api.fn('preview-campaign-outreach', { campaign_id: c.id, limit: 30 }); toast('Générés: ' + r.generated + ' / Coût: $' + (parseFloat(r.total_cost_usd) || 0).toFixed(4)); reload(); if (showRecipients) loadRecipients(); } catch (e) { toast(e.message, 'error'); } finally { setBusy(false); } };
+  const launch = async dryRun => { setBusy(true); try { const r = await api.fn('process-campaign', { campaign_id: c.id, limit: 50, dry_run: dryRun }); if (dryRun) toast('Dry-run: ' + (r.would_process || 0) + ' à traiter'); else toast('Envoyés: ' + (r.sent_ok || 0) + ' / Skip: ' + (r.skipped || 0) + ' / Err: ' + (r.errors || 0)); reload(); } catch (e) { toast(e.message, 'error'); } finally { setBusy(false); } };
+  const archive = async () => { if (!confirm('Archiver?')) return; try { await api.update('campaigns', 'id=eq.' + c.id, { status: 'archived' }); toast('Archivée'); onBack(); } catch (e) { toast(e.message, 'error'); } };
+  const isAI = c.mode === 'ai_generated';
+  const previewCount = recipients.filter(r => r.rendered_body && r.rendered_body.trim() !== '').length;
   return (<div className="space-y-4">
     <button onClick={onBack} className="flex items-center gap-2 text-sm text-slate-600"><IconArrowLeft className="w-4 h-4"/>Retour</button>
-    <Card className="p-4">
-      <div className="flex items-center justify-between mb-2"><h2 className="text-lg font-bold">{c.name}</h2><Badge color={c.status === 'running' ? 'amber' : c.status === 'completed' ? 'emerald' : c.status === 'ready' ? 'indigo' : 'slate'}>{c.status}</Badge></div>
-      {c.description && <p className="text-sm text-slate-600 mb-3">{c.description}</p>}
-      <div className="bg-slate-50 p-3 rounded-lg text-sm font-mono whitespace-pre-wrap">{c.message_template}</div>
-    </Card>
-    <div className="grid grid-cols-2 gap-2">
-      <Card className="p-3"><p className="text-xs text-slate-500">Ciblés</p><p className="text-xl font-bold">{c.total_targeted}</p></Card>
-      <Card className="p-3"><p className="text-xs text-slate-500">En attente</p><p className="text-xl font-bold text-indigo-600">{c.pending}</p></Card>
-      <Card className="p-3"><p className="text-xs text-slate-500">Envoyés</p><p className="text-xl font-bold text-emerald-600">{c.sent}</p></Card>
-      <Card className="p-3"><p className="text-xs text-slate-500">Échecs</p><p className="text-xl font-bold text-rose-600">{c.failed}</p></Card>
-    </div>
-    <Card className="p-4 space-y-2">
-      <p className="font-semibold mb-2">Actions</p>
-      {c.status === 'draft' && <Button onClick={materialize} disabled={busy} className="w-full">{busy ? '...' : 'Préparer (matérialiser les recipients)'}</Button>}
-      {(c.status === 'ready' || c.status === 'running') && c.pending > 0 && (<>
-        <Button variant="secondary" onClick={() => launch(true)} disabled={busy} className="w-full">Dry-run</Button>
-        <Button variant="success" onClick={() => launch(false)} disabled={busy} className="w-full"><IconPlay className="w-4 h-4"/>{busy ? 'Envoi...' : 'Envoyer batch (50 max)'}</Button>
-      </>)}
+    <Card className="p-4"><div className="flex items-center justify-between mb-2"><h2 className="text-lg font-bold">{c.name}</h2><div className="flex gap-1">{isAI && <Badge color="violet"><IconSparkle className="w-3 h-3 inline"/> IA</Badge>}<Badge color={c.status === 'running' ? 'amber' : c.status === 'completed' ? 'emerald' : c.status === 'ready' ? 'indigo' : 'slate'}>{c.status}</Badge></div></div>{c.description && <p className="text-sm text-slate-600 mb-3">{c.description}</p>}{isAI ? (<div className="bg-violet-50 p-3 rounded-lg text-sm"><p className="text-xs font-semibold text-violet-700 mb-1">Brief campagne</p><p className="text-slate-700 whitespace-pre-wrap">{c.campaign_brief}</p></div>) : (<div className="bg-slate-50 p-3 rounded-lg text-sm font-mono whitespace-pre-wrap">{c.message_template}</div>)}</Card>
+    <div className="grid grid-cols-2 gap-2"><Card className="p-3"><p className="text-xs text-slate-500">Ciblés</p><p className="text-xl font-bold">{c.total_targeted}</p></Card><Card className="p-3"><p className="text-xs text-slate-500">Pending</p><p className="text-xl font-bold text-indigo-600">{c.pending}</p></Card><Card className="p-3"><p className="text-xs text-slate-500">Envoyés</p><p className="text-xl font-bold text-emerald-600">{c.sent}</p></Card><Card className="p-3"><p className="text-xs text-slate-500">Échecs</p><p className="text-xl font-bold text-rose-600">{c.failed}</p></Card></div>
+    <Card className="p-4 space-y-2"><p className="font-semibold mb-2">Actions</p>
+      {c.status === 'draft' && <Button onClick={materialize} disabled={busy} className="w-full">{busy ? '...' : '1. Préparer (matérialiser ' + (isAI ? 'sans body' : 'avec body rendu') + ')'}</Button>}
+      {(c.status === 'ready' || c.status === 'running') && isAI && c.pending > 0 && (<Button variant="secondary" onClick={generatePreviews} disabled={busy} className="w-full"><IconSparkle className="w-4 h-4"/>{busy ? 'Génération...' : '2. Générer 30 aperçus IA (~$0.30)'}</Button>)}
+      {(c.status === 'ready' || c.status === 'running') && c.pending > 0 && (<><Button variant="secondary" onClick={() => launch(true)} disabled={busy} className="w-full">Dry-run</Button><Button variant="success" onClick={() => launch(false)} disabled={busy} className="w-full"><IconPlay className="w-4 h-4"/>{busy ? '...' : (isAI ? '3. Envoyer batch (50, JIT génération si manquant)' : 'Envoyer batch (50 max)')}</Button></>)}
       {c.status === 'completed' && <p className="text-sm text-emerald-700 bg-emerald-50 p-2 rounded">Campagne terminée</p>}
       {c.status !== 'archived' && <Button variant="danger" onClick={archive} className="w-full">Archiver</Button>}
     </Card>
+    {c.total_targeted > 0 && (<Card className="p-4"><button onClick={() => setShowRecipients(!showRecipients)} className="w-full flex items-center justify-between"><p className="font-semibold">Recipients ({c.total_targeted})</p><IconChevron className={'w-5 h-5 text-slate-400 transition ' + (showRecipients ? 'rotate-90' : '')}/></button>{showRecipients && (<div className="mt-3 space-y-2 max-h-96 overflow-y-auto">{isAI && previewCount > 0 && <p className="text-xs text-violet-700 bg-violet-50 p-2 rounded">{previewCount} recipients ont un body généré. Les autres seront générés JIT.</p>}{recipients.length === 0 && <p className="text-sm text-slate-500">Chargement...</p>}{recipients.map(r => (<RecipientRow key={r.id} recipient={r} api={api} toast={toast} isAI={isAI} campaignId={c.id} brief={c.campaign_brief} onUpdated={loadRecipients}/>))}</div>)}</Card>)}
+  </div>);
+}
+function RecipientRow({ recipient, api, toast, isAI, campaignId, brief, onUpdated }) {
+  const [lead, setLead] = useState(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { api.rest('/leads?id=eq.' + recipient.lead_id + '&select=company_name,contact_name,phone_e164&limit=1').then(r => { if (r && r[0]) setLead(r[0]); }).catch(() => {}); }, [recipient.lead_id]);
+  const regenerate = async () => { setBusy(true); try { await api.fn('generate-outreach', { lead_id: recipient.lead_id, campaign_id: campaignId, campaign_brief: brief, save_to_recipient_id: recipient.id, force_mode: 'preview' }); toast('Régénéré'); onUpdated(); } catch (e) { toast(e.message, 'error'); } finally { setBusy(false); } };
+  const statusBadge = { pending: 'slate', sent: 'emerald', failed: 'rose', skipped: 'amber', opted_out_at_send: 'rose' }[recipient.status] || 'slate';
+  return (<div className="text-xs bg-slate-50 p-3 rounded-lg space-y-1"><div className="flex items-center justify-between gap-2"><p className="font-medium text-slate-900 truncate">{lead?.company_name || '—'}</p><Badge color={statusBadge}>{recipient.status}</Badge></div>{lead && <p className="text-slate-500">{lead.phone_e164}</p>}{recipient.rendered_body ? <p className="text-slate-700 whitespace-pre-wrap mt-1 bg-white p-2 rounded">{recipient.rendered_body}</p> : <p className="text-slate-400 italic">Body non généré</p>}{recipient.error_message && <p className="text-rose-600 mt-1">{recipient.error_message}</p>}{isAI && recipient.status === 'pending' && (<button onClick={regenerate} disabled={busy} className="text-violet-600 underline text-xs disabled:opacity-50">{busy ? '...' : 'Régénérer ce SMS'}</button>)}</div>);
+}
+
+// =====================================================================
+// SUGGESTIONS IA
+// =====================================================================
+function SuggestionsTab({ api, toast }) {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [editBody, setEditBody] = useState('');
+  const load = useCallback(async () => { setLoading(true); try { setItems(await api.rest('/v_pending_suggestions?select=*') || []); } catch (e) { toast(e.message, 'error'); } finally { setLoading(false); } }, [api]);
+  useEffect(() => { load(); }, [load]);
+  const act = async (id, action, edited) => {
+    try {
+      const payload = { suggestion_id: id, action, reviewer: 'dashboard' };
+      if (action === 'edit_approve') payload.edited_body = edited;
+      const r = await api.fn('process-suggestion', payload);
+      toast(r.action === 'sent' ? 'Envoyé ✓' : (r.action === 'rejected' ? 'Rejetée' : 'OK'));
+      setEditingId(null); setEditBody(''); load();
+    } catch (e) { toast(e.message, 'error'); }
+  };
+  return (<div className="space-y-3">
+    {loading && <div className="p-8 text-center text-slate-500">Chargement...</div>}
+    {!loading && items.length === 0 && <Card className="p-8 text-center text-slate-500"><IconSparkle className="w-12 h-12 mx-auto mb-2 text-slate-300"/><p>Aucune suggestion en attente</p><p className="text-xs mt-1">Les nouvelles suggestions IA apparaitront ici</p></Card>}
+    {items.map(s => (<Card key={s.id} className="p-4 space-y-3">
+      <div className="flex items-start justify-between gap-2"><div className="flex-1 min-w-0"><p className="font-semibold text-slate-900 truncate">{s.company_name || '—'}</p><p className="text-xs text-slate-500">{s.contact_name || ''} · {s.phone_e164}</p></div><div className="flex flex-col gap-1 items-end">{s.escalate && <Badge color="rose">⚠ Escalade</Badge>}{s.sentiment && <Badge color={sentColor(s.sentiment)}>{s.sentiment}</Badge>}{s.intent && <Badge color="slate">{s.intent}</Badge>}</div></div>
+      {s.escalate_reason && <div className="text-xs bg-rose-50 text-rose-700 p-2 rounded">{s.escalate_reason}</div>}
+      <div className="bg-slate-50 p-3 rounded-lg">{editingId === s.id ? (<TextArea value={editBody} onChange={setEditBody} rows={3}/>) : (<p className="text-sm whitespace-pre-wrap">{s.suggested_body || '(pas de réponse suggérée)'}</p>)}</div>
+      {!s.send_reply && <div className="text-xs text-amber-700 bg-amber-50 p-2 rounded">L'IA recommande de ne PAS répondre (send_reply=false)</div>}
+      {s.internal_note && <div className="text-xs text-slate-500 italic">{s.internal_note}</div>}
+      <div className="flex gap-2 text-xs text-slate-400 border-t pt-2"><span>{fmtRelative(s.created_at)}</span><span>{fmtCost(s.estimated_cost_usd)}</span><span>{s.latency_ms}ms</span></div>
+      <div className="flex gap-2">{editingId === s.id ? (<><Button variant="secondary" onClick={() => { setEditingId(null); setEditBody(''); }} className="flex-1">Annuler</Button><Button variant="success" onClick={() => act(s.id, 'edit_approve', editBody)} disabled={!editBody} className="flex-1">Envoyer modifié</Button></>) : (<><Button variant="danger" onClick={() => act(s.id, 'reject')} className="flex-1"><IconX className="w-4 h-4"/>Rejeter</Button>{s.suggested_body && <Button variant="secondary" onClick={() => { setEditingId(s.id); setEditBody(s.suggested_body); }}><IconEdit className="w-4 h-4"/></Button>}{s.send_reply && s.suggested_body && <Button variant="success" onClick={() => act(s.id, 'approve')} className="flex-1"><IconCheck className="w-4 h-4"/>Approuver</Button>}</>)}</div>
+    </Card>))}
   </div>);
 }
 
+// =====================================================================
+// CONVERSATIONS
+// =====================================================================
 function ConversationsTab({ api, toast }) {
   const [phone, setPhone] = useState('');
   const [messages, setMessages] = useState([]);
@@ -565,20 +425,8 @@ function ConversationsTab({ api, toast }) {
   const [reply, setReply] = useState('');
   const [sending, setSending] = useState(false);
   const [searched, setSearched] = useState(false);
-  const search = async () => {
-    if (!phone) return;
-    setLoading(true); setSearched(true);
-    try { setMessages(await api.rest('/messages_log?phone_e164=eq.' + encodeURIComponent(phone) + '&order=timestamp.asc&limit=200') || []); }
-    catch (e) { toast(e.message, 'error'); }
-    finally { setLoading(false); }
-  };
-  const sendReply = async () => {
-    if (!reply || !phone) return;
-    setSending(true);
-    try { await api.fn('send-sms', { phone_e164: phone, body: reply }); setReply(''); await search(); toast('Envoyé'); }
-    catch (e) { toast(e.message, 'error'); }
-    finally { setSending(false); }
-  };
+  const search = async () => { if (!phone) return; setLoading(true); setSearched(true); try { setMessages(await api.rest('/messages_log?phone_e164=eq.' + encodeURIComponent(phone) + '&order=timestamp.asc&limit=200') || []); } catch (e) { toast(e.message, 'error'); } finally { setLoading(false); } };
+  const sendReply = async () => { if (!reply || !phone) return; setSending(true); try { await api.fn('send-sms', { phone_e164: phone, body: reply }); setReply(''); await search(); toast('Envoyé'); } catch (e) { toast(e.message, 'error'); } finally { setSending(false); } };
   return (<div className="space-y-4">
     <Card className="p-4"><div className="flex gap-2"><div className="flex-1"><Input value={phone} onChange={setPhone} placeholder="+15145551234"/></div><Button onClick={search} disabled={loading || !phone}>Chercher</Button></div></Card>
     {loading && <div className="p-8 text-center text-slate-500">Chargement...</div>}
@@ -587,133 +435,88 @@ function ConversationsTab({ api, toast }) {
   </div>);
 }
 
-function OptOutsTab({ api, toast }) {
+// =====================================================================
+// PLUS (Opt-outs + Logs)
+// =====================================================================
+function PlusTab({ api, toast }) {
+  const [section, setSection] = useState('optouts');
+  return (<div className="space-y-4">
+    <div className="flex gap-2 p-1 bg-slate-100 rounded-xl"><button onClick={() => setSection('optouts')} className={'flex-1 py-2 rounded-lg text-sm font-medium ' + (section === 'optouts' ? 'bg-white shadow' : 'text-slate-600')}>Opt-outs</button><button onClick={() => setSection('logs')} className={'flex-1 py-2 rounded-lg text-sm font-medium ' + (section === 'logs' ? 'bg-white shadow' : 'text-slate-600')}>Logs</button></div>
+    {section === 'optouts' && <OptOutsSection api={api} toast={toast}/>}
+    {section === 'logs' && <ActivitySection api={api} toast={toast}/>}
+  </div>);
+}
+function OptOutsSection({ api, toast }) {
   const [list, setList] = useState([]);
   const [phone, setPhone] = useState('');
   const [reason, setReason] = useState('manual');
   const [busy, setBusy] = useState(false);
-  const load = useCallback(async () => {
-    try { setList(await api.rest('/opt_outs?select=*&order=opted_out_at.desc&limit=200') || []); }
-    catch (e) { toast(e.message, 'error'); }
-  }, [api]);
+  const load = useCallback(async () => { try { setList(await api.rest('/opt_outs?select=*&order=opted_out_at.desc&limit=200') || []); } catch (e) { toast(e.message, 'error'); } }, [api]);
   useEffect(() => { load(); }, [load]);
-  const add = async () => {
-    if (!phone) return;
-    setBusy(true);
-    try { await api.rpc('add_manual_opt_out', { p_phone: phone, p_reason: reason }); setPhone(''); toast('Ajouté'); load(); }
-    catch (e) { toast(e.message, 'error'); }
-    finally { setBusy(false); }
-  };
-  const remove = async (p) => {
-    if (!confirm('Retirer ' + p + '?')) return;
-    try { await api.rpc('remove_opt_out', { p_phone: p }); toast('Retiré'); load(); }
-    catch (e) { toast(e.message, 'error'); }
-  };
+  const add = async () => { if (!phone) return; setBusy(true); try { await api.rpc('add_manual_opt_out', { p_phone: phone, p_reason: reason }); setPhone(''); toast('Ajouté'); load(); } catch (e) { toast(e.message, 'error'); } finally { setBusy(false); } };
+  const remove = async p => { if (!confirm('Retirer ' + p + '?')) return; try { await api.rpc('remove_opt_out', { p_phone: p }); toast('Retiré'); load(); } catch (e) { toast(e.message, 'error'); } };
   return (<div className="space-y-4">
     <Card className="p-4 space-y-3"><p className="font-semibold text-slate-900">Ajouter manuellement</p><Input value={phone} onChange={setPhone} placeholder="+15145551234"/><Input value={reason} onChange={setReason} placeholder="Raison"/><Button onClick={add} disabled={busy || !phone} className="w-full">Ajouter</Button></Card>
     <Card className="p-4"><p className="font-semibold text-slate-900 mb-3">Liste ({list.length})</p><div className="space-y-2 max-h-96 overflow-y-auto">{list.map(o => (<div key={o.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg"><div className="flex-1 min-w-0"><p className="font-mono text-sm text-slate-900">{o.phone_e164}</p><p className="text-xs text-slate-500">{o.reason || '—'} · {fmtRelative(o.opted_out_at)}</p></div><button onClick={() => remove(o.phone_e164)} className="p-2 text-rose-600 hover:bg-rose-50 rounded-lg"><IconTrash className="w-4 h-4"/></button></div>))}</div></Card>
   </div>);
 }
-
-function ActivityTab({ api, toast }) {
+function ActivitySection({ api, toast }) {
   const [items, setItems] = useState([]);
   useEffect(() => { api.rest('/agent_activity?select=*&order=timestamp.desc.nullslast,created_at.desc&limit=100').then(d => setItems(d || [])).catch(e => toast(e.message, 'error')); }, [api]);
   return (<div className="space-y-2">{items.length === 0 && <Card className="p-8 text-center text-slate-500">Aucune activité</Card>}{items.map(a => (<Card key={a.id} className="p-3"><div className="flex items-center justify-between"><p className="font-medium text-sm text-slate-900">{a.agent_name || 'system'}</p><Badge color={a.status === 'ok' ? 'emerald' : a.status === 'failed' ? 'rose' : 'amber'}>{a.status || '—'}</Badge></div><p className="text-sm text-slate-600 mt-0.5">{a.action || '—'}{a.records_processed ? ' · ' + a.records_processed : ''}</p><p className="text-xs text-slate-400 mt-1">{fmtRelative(a.timestamp || a.created_at)}</p></Card>))}</div>);
 }
 
+// =====================================================================
+// SETTINGS
+// =====================================================================
 function SettingsPage({ api, toast, onBack }) {
+  const [section, setSection] = useState('general');
   const [settings, setSettings] = useState({});
-  const [busy, setBusy] = useState(false);
-  const load = useCallback(async () => {
-    try {
-      const r = await api.rest('/app_settings?select=*&order=key.asc');
-      const map = {};
-      (r || []).forEach(s => { map[s.key] = s; });
-      setSettings(map);
-    } catch (e) { toast(e.message, 'error'); }
-  }, [api]);
+  const load = useCallback(async () => { try { const r = await api.rest('/app_settings?select=*&order=key.asc'); const map = {}; (r || []).forEach(s => { map[s.key] = s; }); setSettings(map); } catch (e) { toast(e.message, 'error'); } }, [api]);
   useEffect(() => { load(); }, [load]);
-  const save = async (key, value) => {
-    setBusy(true);
-    try {
-      await api.rpc('set_setting', { p_key: key, p_value: value });
-      toast('Réglage sauvegardé');
-      load();
-    } catch (e) { toast(e.message, 'error'); }
-    finally { setBusy(false); }
-  };
+  const save = async (key, value) => { try { await api.rpc('set_setting', { p_key: key, p_value: value }); toast('Sauvegardé'); load(); } catch (e) { toast(e.message, 'error'); } };
   const SettingItem = ({ k, label, hint, type, parser }) => {
     const cur = settings[k];
     const [v, setV] = useState('');
     useEffect(() => { if (cur) setV(typeof cur.value === 'string' ? cur.value : JSON.stringify(cur.value)); }, [cur]);
     if (!cur) return null;
-    return (<Card className="p-4 space-y-2">
-      <div><p className="font-semibold text-sm">{label}</p><p className="text-xs text-slate-500">{hint || cur.description}</p></div>
-      <div className="flex gap-2">
-        <input type={type || 'text'} value={v} onChange={e => setV(e.target.value)} className="flex-1 px-3 py-2 rounded-lg border border-slate-300 focus:border-indigo-500 outline-none text-sm"/>
-        <Button onClick={() => save(k, parser ? parser(v) : v)} disabled={busy}>OK</Button>
-      </div>
-    </Card>);
+    return (<Card className="p-4 space-y-2"><div><p className="font-semibold text-sm">{label}</p><p className="text-xs text-slate-500">{hint || cur.description}</p></div><div className="flex gap-2"><input type={type || 'text'} value={v} onChange={e => setV(e.target.value)} className="flex-1 px-3 py-2 rounded-lg border border-slate-300 outline-none text-sm"/><Button onClick={() => save(k, parser ? parser(v) : v)}>OK</Button></div></Card>);
   };
+  const aiEnabled = settings.ai_enabled?.value === true;
+  const aiMode = typeof settings.ai_mode?.value === 'string' ? settings.ai_mode.value : 'shadow';
   return (<div className="space-y-4">
     <button onClick={onBack} className="flex items-center gap-2 text-sm text-slate-600"><IconArrowLeft className="w-4 h-4"/>Retour</button>
     <h2 className="text-xl font-bold">Réglages</h2>
-    <p className="text-sm text-slate-600">Ces réglages s'appliquent immédiatement à toutes les fonctions d'envoi.</p>
-    <SettingItem k="quiet_hours_start" label="Début de la fenêtre d'envoi" hint="Heure (0-23) en format 24h Montréal" type="number" parser={v => parseInt(v, 10)}/>
-    <SettingItem k="quiet_hours_end" label="Fin de la fenêtre d'envoi" hint="Heure (0-23) en format 24h Montréal" type="number" parser={v => parseInt(v, 10)}/>
-    <SettingItem k="quiet_hours_tz" label="Fuseau horaire" hint="Ex: America/Montreal, America/New_York" parser={v => v}/>
-    <SettingItem k="daily_cap_per_number" label="Plafond quotidien" hint="Max SMS par numéro par tranche de 24h (1 = 1 SMS/jour max)" type="number" parser={v => parseInt(v, 10)}/>
-    <SettingItem k="send_throttle_ms" label="Délai entre envois (ms)" hint=">=1000 pour Twilio long-code (1 SMS/sec max)" type="number" parser={v => parseInt(v, 10)}/>
+    <div className="flex gap-2 p-1 bg-slate-100 rounded-xl"><button onClick={() => setSection('general')} className={'flex-1 py-2 rounded-lg text-sm font-medium ' + (section === 'general' ? 'bg-white shadow' : 'text-slate-600')}>Envoi</button><button onClick={() => setSection('ai')} className={'flex-1 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-1 ' + (section === 'ai' ? 'bg-white shadow text-violet-700' : 'text-slate-600')}><IconSparkle className="w-4 h-4"/>IA</button></div>
+    {section === 'general' && (<><SettingItem k="quiet_hours_start" label="Début fenêtre d'envoi" hint="Heure 0-23, format Montréal" type="number" parser={v => parseInt(v, 10)}/><SettingItem k="quiet_hours_end" label="Fin fenêtre d'envoi" hint="Heure 0-23" type="number" parser={v => parseInt(v, 10)}/><SettingItem k="quiet_hours_tz" label="Fuseau horaire" hint="Ex: America/Montreal" parser={v => v}/><SettingItem k="daily_cap_per_number" label="Plafond quotidien" hint="Max SMS par numéro / 24h" type="number" parser={v => parseInt(v, 10)}/><SettingItem k="send_throttle_ms" label="Délai entre envois (ms)" hint=">=1000 pour Twilio long-code" type="number" parser={v => parseInt(v, 10)}/></>)}
+    {section === 'ai' && (<><Card className="p-4 space-y-3"><Toggle checked={aiEnabled} onChange={v => save('ai_enabled', v)} label="IA activée" helper="Master switch — désactivé = aucun appel API"/></Card><Card className="p-4 space-y-3"><p className="font-semibold text-sm">Mode IA</p><div className="flex gap-2">{['shadow', 'auto'].map(m => (<button key={m} onClick={() => save('ai_mode', m)} className={'flex-1 py-2 rounded-lg text-sm font-medium border ' + (aiMode === m ? 'bg-violet-100 border-violet-300 text-violet-700' : 'bg-white border-slate-300 text-slate-600')}>{m === 'shadow' ? 'Shadow (review)' : 'Auto (envoie direct)'}</button>))}</div><p className="text-xs text-slate-500">Shadow = suggestions stockées, action humaine requise. Auto = envoie automatiquement.</p></Card><SettingItem k="ai_max_exchanges_per_lead" label="Max échanges IA / lead" hint="Après ce nombre, escalation forcée" type="number" parser={v => parseInt(v, 10)}/><SettingItem k="ai_skip_if_replied_recently_minutes" label="Anti double-réponse (min)" hint="Skip génération si suggestion existe < N min" type="number" parser={v => parseInt(v, 10)}/><SettingItem k="ai_outreach_model" label="Modèle outreach" hint="claude-sonnet-4-6 ou claude-haiku-4-5" parser={v => v}/><SettingItem k="ai_reply_model" label="Modèle réponses" hint="Sonnet recommandé pour la nuance" parser={v => v}/></>)}
   </div>);
 }
 
-function BottomNav({ tab, onChange }) {
-  const tabs = [
-    { id: 'dashboard', label: 'Accueil', Icon: IconHome },
-    { id: 'leads', label: 'Leads', Icon: IconUsers },
-    { id: 'campaigns', label: 'Campagnes', Icon: IconMegaphone },
-    { id: 'conversations', label: 'Convo', Icon: IconChat },
-    { id: 'optouts', label: 'Opt-out', Icon: IconBan },
-    { id: 'activity', label: 'Logs', Icon: IconActivity },
-  ];
-  return (<nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-2 py-2 z-30" style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}>
-    <div className="max-w-4xl mx-auto flex justify-around">
-      {tabs.map(t => (<button key={t.id} onClick={() => onChange(t.id)} className={'flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg transition ' + (tab === t.id ? 'text-indigo-600' : 'text-slate-500')}><t.Icon className="w-5 h-5"/><span className="text-xs font-medium">{t.label}</span></button>))}
-    </div>
-  </nav>);
+// =====================================================================
+// NAV + APP
+// =====================================================================
+function BottomNav({ tab, onChange, suggestionCount }) {
+  const tabs = [{ id: 'dashboard', label: 'Accueil', Icon: IconHome }, { id: 'leads', label: 'Leads', Icon: IconUsers }, { id: 'campaigns', label: 'Campagnes', Icon: IconMegaphone }, { id: 'conversations', label: 'Convo', Icon: IconChat }, { id: 'suggestions', label: 'Sugg.', Icon: IconSparkle, badge: suggestionCount }, { id: 'plus', label: 'Plus', Icon: IconMore }];
+  return (<nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-2 py-2 z-30" style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}><div className="max-w-4xl mx-auto flex justify-around">{tabs.map(t => (<button key={t.id} onClick={() => onChange(t.id)} className={'relative flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg transition ' + (tab === t.id ? 'text-indigo-600' : 'text-slate-500')}><t.Icon className="w-5 h-5"/>{t.badge > 0 && <span className="absolute -top-1 right-0 bg-rose-600 text-white text-[10px] font-bold rounded-full min-w-4 h-4 px-1 flex items-center justify-center">{t.badge}</span>}<span className="text-xs font-medium">{t.label}</span></button>))}</div></nav>);
 }
-
 function App() {
   const [config, setConfig] = useState(() => { try { const s = sessionStorage.getItem(STORAGE_KEY); return s ? JSON.parse(s) : null; } catch { return null; } });
   const [tab, setTab] = useState('dashboard');
   const [showSettings, setShowSettings] = useState(false);
+  const [suggCount, setSuggCount] = useState(0);
   const [t, showToast, clearToast] = useToast();
   const api = useMemo(() => config ? makeApi(config.url, config.key) : null, [config]);
-  const onConnect = (cfg) => { try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(cfg)); } catch {} setConfig(cfg); };
+  const refreshSuggCount = useCallback(async () => { if (!api) return; try { const r = await api.rest('/reply_suggestions?select=id&status=eq.pending'); setSuggCount((r || []).length); } catch {} }, [api]);
+  useEffect(() => { if (api) { refreshSuggCount(); const i = setInterval(refreshSuggCount, 30000); return () => clearInterval(i); } }, [api, refreshSuggCount]);
+  const onConnect = cfg => { try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(cfg)); } catch {} setConfig(cfg); };
   const onDisconnect = () => { try { sessionStorage.removeItem(STORAGE_KEY); } catch {} setConfig(null); };
   if (!config) return <><Login onConnect={onConnect}/><Toast {...t} onDone={clearToast}/></>;
   return (<div className="min-h-screen pb-24">
     <Toast {...t} onDone={clearToast}/>
-    <header className="bg-white border-b border-slate-200 px-4 py-3 sticky top-0 z-20">
-      <div className="max-w-4xl mx-auto flex items-center justify-between">
-        <div className="flex items-center gap-2"><div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white"><IconChat className="w-4 h-4"/></div><h1 className="font-bold text-slate-900">SMS Dashboard</h1></div>
-        <div className="flex items-center gap-1">
-          <button onClick={() => setShowSettings(true)} className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg"><IconSettings className="w-5 h-5"/></button>
-          <button onClick={onDisconnect} className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg"><IconLogOut className="w-5 h-5"/></button>
-        </div>
-      </div>
-    </header>
-    <main className="max-w-4xl mx-auto p-4">
-      {showSettings ? <SettingsPage api={api} toast={showToast} onBack={() => setShowSettings(false)}/> : (<>
-        {tab === 'dashboard' && <Dashboard api={api} toast={showToast}/>}
-        {tab === 'leads' && <LeadsTab api={api} toast={showToast}/>}
-        {tab === 'campaigns' && <CampaignsTab api={api} toast={showToast}/>}
-        {tab === 'conversations' && <ConversationsTab api={api} toast={showToast}/>}
-        {tab === 'optouts' && <OptOutsTab api={api} toast={showToast}/>}
-        {tab === 'activity' && <ActivityTab api={api} toast={showToast}/>}
-      </>)}
-    </main>
-    {!showSettings && <BottomNav tab={tab} onChange={setTab}/>}
+    <header className="bg-white border-b border-slate-200 px-4 py-3 sticky top-0 z-20"><div className="max-w-4xl mx-auto flex items-center justify-between"><div className="flex items-center gap-2"><div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white"><IconChat className="w-4 h-4"/></div><h1 className="font-bold text-slate-900">SMS Dashboard</h1></div><div className="flex items-center gap-1"><button onClick={() => setShowSettings(true)} className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg"><IconSettings className="w-5 h-5"/></button><button onClick={onDisconnect} className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg"><IconLogOut className="w-5 h-5"/></button></div></div></header>
+    <main className="max-w-4xl mx-auto p-4">{showSettings ? <SettingsPage api={api} toast={showToast} onBack={() => setShowSettings(false)}/> : (<>{tab === 'dashboard' && <Dashboard api={api} toast={showToast}/>}{tab === 'leads' && <LeadsTab api={api} toast={showToast}/>}{tab === 'campaigns' && <CampaignsTab api={api} toast={showToast}/>}{tab === 'conversations' && <ConversationsTab api={api} toast={showToast}/>}{tab === 'suggestions' && <SuggestionsTab api={api} toast={showToast}/>}{tab === 'plus' && <PlusTab api={api} toast={showToast}/>}</>)}</main>
+    {!showSettings && <BottomNav tab={tab} onChange={setTab} suggestionCount={suggCount}/>}
   </div>);
 }
 ReactDOM.createRoot(document.getElementById('root')).render(<App />);
