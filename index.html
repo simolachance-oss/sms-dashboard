@@ -13,12 +13,14 @@
   body { -webkit-tap-highlight-color: transparent; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
   .scrollbar-thin::-webkit-scrollbar { height: 4px; width: 4px; }
   .scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(0,0,0,.2); border-radius: 2px; }
+  .skeleton { background: linear-gradient(90deg, #e2e8f0 0%, #f1f5f9 50%, #e2e8f0 100%); background-size: 200% 100%; animation: skel 1.5s infinite; }
+  @keyframes skel { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
 </style>
 </head>
 <body class="bg-slate-50">
 <div id="root"></div>
 <script type="text/babel" data-presets="react">
-const { useState, useEffect, useMemo, useCallback } = React;
+const { useState, useEffect, useMemo, useCallback, useRef } = React;
 const SUPABASE_URL = 'https://mzrdeiasmvhjqslqeoko.supabase.co';
 const STORAGE_KEY = 'sms_dashboard_v1';
 
@@ -47,20 +49,24 @@ function makeApi(url, key) {
       return text ? JSON.parse(text) : null;
     },
     insert: async (table, row) => {
-      const r = await fetch(base + '/rest/v1/' + table, {
-        method: 'POST', headers: { ...h, Prefer: 'return=representation' }, body: JSON.stringify(row),
-      });
+      const r = await fetch(base + '/rest/v1/' + table, { method: 'POST', headers: { ...h, Prefer: 'return=representation' }, body: JSON.stringify(row) });
       const text = await r.text();
       if (!r.ok) throw new Error(text || r.statusText);
       return text ? JSON.parse(text) : null;
     },
     update: async (table, filter, patch) => {
-      const r = await fetch(base + '/rest/v1/' + table + '?' + filter, {
-        method: 'PATCH', headers: { ...h, Prefer: 'return=representation' }, body: JSON.stringify(patch),
-      });
+      const r = await fetch(base + '/rest/v1/' + table + '?' + filter, { method: 'PATCH', headers: { ...h, Prefer: 'return=representation' }, body: JSON.stringify(patch) });
       const text = await r.text();
       if (!r.ok) throw new Error(text || r.statusText);
       return text ? JSON.parse(text) : null;
+    },
+    download: async (path, filename) => {
+      const r = await fetch(base + '/rest/v1' + path, { headers: { ...h, Accept: 'text/csv' } });
+      if (!r.ok) throw new Error(await r.text());
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
     },
   };
 }
@@ -68,10 +74,7 @@ function makeApi(url, key) {
 const Icon = ({ d, className }) => (<svg className={className || 'w-5 h-5'} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={d}/></svg>);
 const IconHome = (p) => <Icon {...p} d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>;
 const IconUsers = (p) => <Icon {...p} d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8"/>;
-const IconClock = (p) => <Icon {...p} d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M12 6v6l4 2"/>;
 const IconChat = (p) => <Icon {...p} d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>;
-const IconBan = (p) => <Icon {...p} d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M4.93 4.93l14.14 14.14"/>;
-const IconActivity = (p) => <Icon {...p} d="M22 12h-4l-3 9L9 3l-3 9H2"/>;
 const IconSend = (p) => <Icon {...p} d="M22 2L11 13 M22 2l-7 20-4-9-9-4z"/>;
 const IconLogOut = (p) => <Icon {...p} d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4 M16 17l5-5-5-5 M21 12H9"/>;
 const IconRefresh = (p) => <Icon {...p} d="M23 4v6h-6 M1 20v-6h6 M3.51 9a9 9 0 0 1 14.85-3.36L23 10 M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/>;
@@ -89,24 +92,28 @@ const IconSparkle = (p) => <Icon {...p} d="M12 3l1.9 5.8L20 11l-5.8 2.1L12 19l-2
 const IconMore = (p) => <Icon {...p} d="M12 5v.01 M12 12v.01 M12 19v.01"/>;
 const IconX = (p) => <Icon {...p} d="M18 6L6 18 M6 6l12 12"/>;
 const IconEdit = (p) => <Icon {...p} d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7 M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z"/>;
+const IconSearch = (p) => <Icon {...p} d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z M21 21l-4.35-4.35"/>;
+const IconDownload = (p) => <Icon {...p} d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4 M7 10l5 5 5-5 M12 15V3"/>;
+const IconActivity = (p) => <Icon {...p} d="M22 12h-4l-3 9L9 3l-3 9H2"/>;
 
 function Card({ children, className }) { return <div className={'bg-white rounded-2xl shadow-sm border border-slate-200 ' + (className || '')}>{children}</div>; }
-function Button({ children, onClick, variant, disabled, className }) {
-  const base = 'inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ';
-  const styles = { primary: 'bg-indigo-600 text-white hover:bg-indigo-700', secondary: 'bg-slate-100 text-slate-700 hover:bg-slate-200', danger: 'bg-rose-600 text-white hover:bg-rose-700', success: 'bg-emerald-600 text-white hover:bg-emerald-700' };
-  return <button type="button" onClick={onClick} disabled={disabled} className={base + (styles[variant || 'primary']) + ' ' + (className || '')}>{children}</button>;
+function Button({ children, onClick, variant, disabled, className, size }) {
+  const base = 'inline-flex items-center justify-center gap-2 rounded-xl font-medium transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ';
+  const sz = size === 'sm' ? 'px-3 py-1.5 text-xs' : 'px-4 py-2.5 text-sm';
+  const styles = { primary: 'bg-indigo-600 text-white hover:bg-indigo-700', secondary: 'bg-slate-100 text-slate-700 hover:bg-slate-200', danger: 'bg-rose-600 text-white hover:bg-rose-700', success: 'bg-emerald-600 text-white hover:bg-emerald-700', ghost: 'text-slate-600 hover:bg-slate-100' };
+  return <button type="button" onClick={onClick} disabled={disabled} className={base + sz + ' ' + (styles[variant || 'primary']) + ' ' + (className || '')}>{children}</button>;
 }
-function Input({ value, onChange, placeholder, type, label, helper }) {
-  return (<label className="block">{label && <span className="text-sm font-medium text-slate-700 mb-1 block">{label}</span>}<input type={type || 'text'} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} className="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none text-base"/>{helper && <span className="text-xs text-slate-500 mt-1 block">{helper}</span>}</label>);
+function Input({ value, onChange, placeholder, type, label, helper, autoFocus }) {
+  return (<label className="block">{label && <span className="text-sm font-medium text-slate-700 mb-1 block">{label}</span>}<input type={type || 'text'} value={value || ''} onChange={e => onChange(e.target.value)} placeholder={placeholder} autoFocus={autoFocus} className="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none text-base"/>{helper && <span className="text-xs text-slate-500 mt-1 block">{helper}</span>}</label>);
 }
 function TextArea({ value, onChange, placeholder, label, rows, helper, mono }) {
-  return (<label className="block">{label && <span className="text-sm font-medium text-slate-700 mb-1 block">{label}</span>}<textarea value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} rows={rows || 3} className={'w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none text-base resize-none ' + (mono ? 'font-mono' : '')}/>{helper && <span className="text-xs text-slate-500 mt-1 block">{helper}</span>}</label>);
+  return (<label className="block">{label && <span className="text-sm font-medium text-slate-700 mb-1 block">{label}</span>}<textarea value={value || ''} onChange={e => onChange(e.target.value)} placeholder={placeholder} rows={rows || 3} className={'w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none text-base resize-none ' + (mono ? 'font-mono text-sm' : '')}/>{helper && <span className="text-xs text-slate-500 mt-1 block">{helper}</span>}</label>);
 }
 function Select({ value, onChange, label, options, helper }) {
-  return (<label className="block">{label && <span className="text-sm font-medium text-slate-700 mb-1 block">{label}</span>}<select value={value} onChange={e => onChange(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none text-base bg-white">{options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}</select>{helper && <span className="text-xs text-slate-500 mt-1 block">{helper}</span>}</label>);
+  return (<label className="block">{label && <span className="text-sm font-medium text-slate-700 mb-1 block">{label}</span>}<select value={value || ''} onChange={e => onChange(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none text-base bg-white">{options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}</select>{helper && <span className="text-xs text-slate-500 mt-1 block">{helper}</span>}</label>);
 }
 function Toggle({ checked, onChange, label, helper }) {
-  return (<div className="flex items-center justify-between gap-3"><div className="flex-1"><p className="text-sm font-medium text-slate-700">{label}</p>{helper && <p className="text-xs text-slate-500">{helper}</p>}</div><button onClick={() => onChange(!checked)} className={'relative w-11 h-6 rounded-full transition ' + (checked ? 'bg-indigo-600' : 'bg-slate-300')}><span className={'absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition transform ' + (checked ? 'translate-x-5' : '')}/></button></div>);
+  return (<div className="flex items-center justify-between gap-3"><div className="flex-1"><p className="text-sm font-medium text-slate-700">{label}</p>{helper && <p className="text-xs text-slate-500">{helper}</p>}</div><button onClick={() => onChange(!checked)} className={'relative w-11 h-6 rounded-full transition shrink-0 ' + (checked ? 'bg-indigo-600' : 'bg-slate-300')}><span className={'absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition transform ' + (checked ? 'translate-x-5' : '')}/></button></div>);
 }
 function Badge({ children, color }) {
   const colors = { indigo: 'bg-indigo-100 text-indigo-700', emerald: 'bg-emerald-100 text-emerald-700', amber: 'bg-amber-100 text-amber-700', rose: 'bg-rose-100 text-rose-700', slate: 'bg-slate-100 text-slate-700', violet: 'bg-violet-100 text-violet-700' };
@@ -118,405 +125,399 @@ function Toast({ msg, kind, onDone }) {
   const bg = kind === 'error' ? 'bg-rose-600' : kind === 'warn' ? 'bg-amber-600' : 'bg-emerald-600';
   return <div className={'fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-3 rounded-xl text-white shadow-lg ' + bg + ' max-w-md text-sm'}>{msg}</div>;
 }
-function Modal({ open, onClose, title, children }) {
+function Modal({ open, onClose, title, children, size }) {
   if (!open) return null;
-  return (<div className="fixed inset-0 z-50 bg-slate-900/50 flex items-end sm:items-center justify-center" onClick={onClose}><div className="bg-white w-full max-w-md max-h-[90vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl p-5" onClick={e => e.stopPropagation()}><div className="flex items-center justify-between mb-4"><h2 className="text-lg font-bold text-slate-900">{title}</h2><button onClick={onClose} className="p-1 text-slate-400"><IconX/></button></div>{children}</div></div>);
+  const w = size === 'lg' ? 'max-w-2xl' : 'max-w-md';
+  return (<div className="fixed inset-0 z-50 bg-slate-900/50 flex items-end sm:items-center justify-center" onClick={onClose}><div className={'bg-white w-full ' + w + ' max-h-[90vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl p-5'} onClick={e => e.stopPropagation()}><div className="flex items-center justify-between mb-4 sticky top-0 bg-white -mx-5 px-5 -mt-5 pt-5 pb-2 border-b border-slate-100 z-10"><h2 className="text-lg font-bold text-slate-900">{title}</h2><button onClick={onClose} className="p-1 text-slate-400"><IconX/></button></div>{children}</div></div>);
 }
-
-function Login({ onConnect }) {
-  const [key, setKey] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState('');
-  const submit = async () => {
-    setErr(''); setBusy(true);
-    try { const api = makeApi(SUPABASE_URL, key); await api.rest('/v_pipeline_stats?select=*&limit=1'); onConnect({ url: SUPABASE_URL, key }); }
-    catch { setErr('Connexion échouée. Vérifie ta clé service_role.'); }
-    finally { setBusy(false); }
-  };
-  return (<div className="min-h-screen flex items-center justify-center p-4"><Card className="w-full max-w-md p-6"><div className="flex items-center gap-3 mb-1"><div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white"><IconChat className="w-6 h-6"/></div><div><h1 className="text-xl font-bold text-slate-900">SMS Dashboard</h1><p className="text-xs text-slate-500">LeadsWebsite</p></div></div><p className="text-sm text-slate-600 mb-5 mt-3">Entre ta clé <code className="bg-slate-100 px-1 rounded">service_role</code>.</p><div className="space-y-3"><Input label="Service Role Key" type="password" value={key} onChange={setKey} placeholder="eyJhbGc..." helper="Project Settings → API → service_role secret"/>{err && <div className="text-sm text-rose-600 bg-rose-50 px-3 py-2 rounded-lg">{err}</div>}<Button onClick={submit} disabled={busy || !key} className="w-full">{busy ? 'Connexion...' : 'Se connecter'}</Button></div></Card></div>);
-}
+function Skeleton({ rows, h }) { const n = rows || 3; const height = h || 'h-16'; return (<div className="space-y-2">{Array.from({ length: n }).map((_, i) => <div key={i} className={'skeleton rounded-xl ' + height}/>)}</div>); }
 
 function fmtDate(s) { if (!s) return '—'; const d = new Date(s); return d.toLocaleString('fr-CA', { dateStyle: 'short', timeStyle: 'short' }); }
 function fmtRelative(s) { if (!s) return '—'; const d = new Date(s); const diff = (Date.now() - d.getTime()) / 1000; if (diff < 60) return 'maintenant'; if (diff < 3600) return Math.floor(diff/60) + ' min'; if (diff < 86400) return Math.floor(diff/3600) + ' h'; return Math.floor(diff/86400) + ' j'; }
 function fmtCost(n) { if (n == null) return '—'; return '$' + parseFloat(n).toFixed(4); }
 function tierColor(t) { if (!t) return 'slate'; if (t.startsWith('A')) return 'rose'; if (t.startsWith('B')) return 'amber'; if (t.startsWith('C')) return 'indigo'; return 'slate'; }
 function sentColor(s) { return s === 'interested' || s === 'positive' ? 'emerald' : s === 'hostile' ? 'rose' : s === 'not_interested' ? 'amber' : 'slate'; }
+function stageOptions() { return [{value:'',label:'—'},{value:'New',label:'New'},{value:'Contacted',label:'Contacted'},{value:'Replied',label:'Replied'},{value:'Engaged',label:'Engaged'},{value:'Booked',label:'Booked'},{value:'Won',label:'Won'},{value:'Lost',label:'Lost'},{value:'Disqualified',label:'Disqualified'}]; }
+function tierOptions() { return [{value:'',label:'—'},{value:'A - Hot Lead',label:'A - Hot Lead'},{value:'B - Warm Lead',label:'B - Warm Lead'},{value:'C - Cold Lead',label:'C - Cold Lead'},{value:'D - Filler Lead',label:'D - Filler Lead'}]; }
 function useToast() { const [t, setT] = useState({ msg: '', kind: 'ok' }); return [t, (msg, kind) => setT({ msg, kind: kind || 'ok' }), () => setT({ msg: '', kind: 'ok' })]; }
-function Row({ k, v }) { return <div className="flex items-center justify-between"><span className="text-slate-600">{k}</span>{v ? <IconCheck className="w-4 h-4 text-emerald-600"/> : <IconAlert className="w-4 h-4 text-rose-600"/>}</div>; }
 
-// =====================================================================
-// HOME / DASHBOARD
-// =====================================================================
-function Dashboard({ api, toast }) {
-  const [stats, setStats] = useState(null);
-  const [quiet, setQuiet] = useState(null);
-  const [costs, setCosts] = useState(null);
-  const [pendingSugg, setPendingSugg] = useState(0);
-  const [health, setHealth] = useState(null);
-  const [busy, setBusy] = useState(false);
-  const [qs, setQs] = useState({ phone: '', body: '' });
-  const [sending, setSending] = useState(false);
+function Login({ onConnect }) {
+  const [key, setKey] = useState(''); const [busy, setBusy] = useState(false); const [err, setErr] = useState('');
+  const submit = async () => { setErr(''); setBusy(true); try { const api = makeApi(SUPABASE_URL, key); await api.rest('/v_pipeline_stats?select=*&limit=1'); onConnect({ url: SUPABASE_URL, key }); } catch { setErr('Connexion échouée.'); } finally { setBusy(false); } };
+  return (<div className="min-h-screen flex items-center justify-center p-4"><Card className="w-full max-w-md p-6"><div className="flex items-center gap-3 mb-1"><div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white"><IconChat className="w-6 h-6"/></div><div><h1 className="text-xl font-bold text-slate-900">SMS Dashboard</h1><p className="text-xs text-slate-500">LeadsWebsite</p></div></div><p className="text-sm text-slate-600 mb-5 mt-3">Entre ta clé service_role.</p><div className="space-y-3"><Input label="Service Role Key" type="password" value={key} onChange={setKey} placeholder="eyJhbGc..."/>{err && <div className="text-sm text-rose-600 bg-rose-50 px-3 py-2 rounded-lg">{err}</div>}<Button onClick={submit} disabled={busy || !key} className="w-full">{busy ? '...' : 'Se connecter'}</Button></div></Card></div>);
+}
 
+function SearchModal({ open, onClose, api, toast, onSelectLead }) {
+  const [q, setQ] = useState(''); const [results, setResults] = useState([]); const [loading, setLoading] = useState(false);
+  useEffect(() => { if (!open) { setQ(''); setResults([]); } }, [open]);
+  useEffect(() => {
+    if (!q || q.length < 2) { setResults([]); return; }
+    const t = setTimeout(async () => {
+      setLoading(true);
+      try {
+        let path = '/leads?select=id,company_name,contact_name,phone_e164,priority_tier,pipeline_stage&limit=15';
+        if (q.startsWith('+') || /^\d/.test(q)) path += '&phone_e164=ilike.*' + encodeURIComponent(q) + '*';
+        else path += '&or=(company_name.ilike.*' + encodeURIComponent(q) + '*,contact_name.ilike.*' + encodeURIComponent(q) + '*)';
+        setResults(await api.rest(path) || []);
+      } catch (e) { toast(e.message, 'error'); } finally { setLoading(false); }
+    }, 250);
+    return () => clearTimeout(t);
+  }, [q]);
+  if (!open) return null;
+  return (<div className="fixed inset-0 z-50 bg-slate-900/60 flex items-start justify-center pt-16 px-4" onClick={onClose}><div className="bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden" onClick={e => e.stopPropagation()}><div className="p-3 border-b"><div className="flex items-center gap-2 px-3"><IconSearch className="w-4 h-4 text-slate-400"/><input value={q} onChange={e => setQ(e.target.value)} placeholder="Recherche entreprise, contact, tél..." autoFocus className="flex-1 py-2 outline-none text-sm"/></div></div><div className="max-h-96 overflow-y-auto">{loading && <div className="p-4 text-center text-sm text-slate-500">Recherche...</div>}{!loading && q.length >= 2 && results.length === 0 && <div className="p-4 text-center text-sm text-slate-500">Aucun résultat</div>}{results.map(r => (<button key={r.id} onClick={() => { onSelectLead(r); onClose(); }} className="w-full text-left p-3 hover:bg-slate-50 border-b border-slate-100"><p className="font-medium text-sm text-slate-900 truncate">{r.company_name || '(Sans nom)'}</p><p className="text-xs text-slate-500">{r.contact_name || '—'} · {r.phone_e164}</p></button>))}</div></div></div>);
+}
+
+function FieldRow({ k, v }) { return (<div className="flex items-start justify-between gap-3 py-1"><span className="text-slate-500 text-xs shrink-0">{k}</span><span className="text-slate-900 text-right break-words text-sm">{v || '—'}</span></div>); }
+function LeadDetailModal({ open, lead, onClose, api, toast, onUpdated }) {
+  const [data, setData] = useState(null); const [edit, setEdit] = useState({}); const [editing, setEditing] = useState(false); const [busy, setBusy] = useState(false); const [history, setHistory] = useState([]); const [suggs, setSuggs] = useState([]);
+  const reload = useCallback(async () => {
+    if (!lead) return;
+    try {
+      const [l, msgs, sugg] = await Promise.all([
+        api.rest('/leads?id=eq.' + lead.id + '&select=*&limit=1'),
+        api.rest('/messages_log?lead_id=eq.' + lead.id + '&select=*&order=timestamp.asc&limit=50'),
+        api.rest('/reply_suggestions?lead_id=eq.' + lead.id + '&select=*&order=created_at.desc&limit=10'),
+      ]);
+      if (l && l[0]) { setData(l[0]); setEdit(l[0]); }
+      setHistory(msgs || []); setSuggs(sugg || []);
+    } catch (e) { toast(e.message, 'error'); }
+  }, [lead, api]);
+  useEffect(() => { if (open) reload(); }, [open, reload]);
+  const save = async () => {
+    setBusy(true);
+    try {
+      const patch = {};
+      ['company_name','contact_name','personalized_hook','site_notes','priority_tier','pipeline_stage','overall_need_score','website','email'].forEach(k => { if (edit[k] !== data[k]) patch[k] = edit[k] || null; });
+      if (Object.keys(patch).length === 0) { setEditing(false); return; }
+      await api.update('leads', 'id=eq.' + lead.id, patch);
+      toast('Sauvegardé'); setEditing(false); reload(); onUpdated && onUpdated();
+    } catch (e) { toast(e.message, 'error'); } finally { setBusy(false); }
+  };
+  if (!open || !lead) return null;
+  return (<Modal open={open} onClose={onClose} title={data?.company_name || 'Lead'} size="lg">{!data ? <Skeleton rows={5}/> : (<div className="space-y-4"><div className="flex flex-wrap gap-1">{data.priority_tier && <Badge color={tierColor(data.priority_tier)}>{data.priority_tier.split(' - ')[0]}</Badge>}{data.pipeline_stage && <Badge color="slate">{data.pipeline_stage}</Badge>}{data.reply_status === 'replied' && <Badge color="emerald">A répondu</Badge>}{data.reply_status === 'opt-out' && <Badge color="rose">Opt-out</Badge>}{data.eligible_sms === false && <Badge color="rose">SMS non-éligible</Badge>}</div>{!editing ? (<><div className="space-y-1"><FieldRow k="Téléphone" v={data.phone_e164}/><FieldRow k="Contact" v={data.contact_name}/><FieldRow k="Email" v={data.email}/><FieldRow k="Site web" v={data.website}/><FieldRow k="Score" v={data.overall_need_score}/><FieldRow k="Hook" v={data.personalized_hook}/><FieldRow k="Site notes" v={data.site_notes}/><FieldRow k="Dernier envoi" v={fmtDate(data.last_sent_at)}/><FieldRow k="Step" v={data.message_step}/></div><Button variant="secondary" onClick={() => setEditing(true)} className="w-full"><IconEdit className="w-4 h-4"/>Éditer</Button></>) : (<div className="space-y-3"><Input label="Entreprise" value={edit.company_name} onChange={v => setEdit({...edit, company_name: v})}/><Input label="Contact" value={edit.contact_name} onChange={v => setEdit({...edit, contact_name: v})}/><Input label="Email" value={edit.email} onChange={v => setEdit({...edit, email: v})}/><Input label="Site web" value={edit.website} onChange={v => setEdit({...edit, website: v})}/><TextArea label="Hook personnalisé" value={edit.personalized_hook} onChange={v => setEdit({...edit, personalized_hook: v})} rows={2}/><TextArea label="Site notes" value={edit.site_notes} onChange={v => setEdit({...edit, site_notes: v})} rows={3}/><Input label="Score" value={edit.overall_need_score} onChange={v => setEdit({...edit, overall_need_score: v ? parseInt(v, 10) : null})} type="number"/><Select label="Tier" value={edit.priority_tier || ''} onChange={v => setEdit({...edit, priority_tier: v})} options={tierOptions()}/><Select label="Pipeline stage" value={edit.pipeline_stage || ''} onChange={v => setEdit({...edit, pipeline_stage: v})} options={stageOptions()}/><div className="flex gap-2"><Button variant="secondary" onClick={() => { setEdit(data); setEditing(false); }} className="flex-1">Annuler</Button><Button onClick={save} disabled={busy} className="flex-1">{busy ? '...' : 'Sauvegarder'}</Button></div></div>)}{history.length > 0 && (<div><p className="font-semibold text-sm mb-2 mt-4">Historique ({history.length})</p><div className="space-y-1.5 max-h-64 overflow-y-auto">{history.map(m => (<div key={m.id} className={'flex ' + (m.direction === 'outbound' ? 'justify-end' : 'justify-start')}><div className={'max-w-[80%] px-3 py-1.5 rounded-2xl text-sm ' + (m.direction === 'outbound' ? 'bg-indigo-600 text-white' : 'bg-slate-100')}><p className="whitespace-pre-wrap">{m.body}</p><p className={'text-[10px] mt-0.5 ' + (m.direction === 'outbound' ? 'text-indigo-200' : 'text-slate-400')}>{fmtDate(m.timestamp)}</p></div></div>))}</div></div>)}{suggs.length > 0 && (<div><p className="font-semibold text-sm mb-2 mt-4 flex items-center gap-1"><IconSparkle className="w-4 h-4 text-violet-600"/>Suggestions IA ({suggs.length})</p><div className="space-y-2">{suggs.map(s => (<div key={s.id} className="text-xs bg-violet-50 p-2 rounded-lg"><div className="flex justify-between mb-1"><Badge color={s.status === 'sent_auto' || s.status === 'approved' ? 'emerald' : s.status === 'rejected' ? 'rose' : 'slate'}>{s.status}</Badge><span className="text-slate-500">{fmtRelative(s.created_at)}</span></div><p className="whitespace-pre-wrap text-slate-700">{s.suggested_body || '(no reply)'}</p>{s.escalate && <p className="text-rose-700 mt-1">⚠ {s.escalate_reason}</p>}</div>))}</div></div>)}</div>)}</Modal>);
+}
+
+function Dashboard({ api, toast, openLead }) {
+  const [stats, setStats] = useState(null); const [health, setHealth] = useState(null); const [costs, setCosts] = useState(null); const [pendingSugg, setPendingSugg] = useState(0); const [twilioErrors, setTwilioErrors] = useState([]); const [busy, setBusy] = useState(false); const [healthRes, setHealthRes] = useState(null); const [qs, setQs] = useState({ phone: '', body: '' }); const [sending, setSending] = useState(false);
   const load = useCallback(async () => {
     try {
-      const [s, q, c, sugg] = await Promise.all([
+      const [s, h, c, sugg, err] = await Promise.all([
         api.rest('/v_pipeline_stats?select=*&limit=1'),
-        api.rpc('is_quiet_hours', {}),
+        api.rest('/v_system_health?select=*&limit=1'),
         api.rest('/v_ai_costs_summary?select=*&limit=1'),
         api.rest('/reply_suggestions?select=id&status=eq.pending'),
+        api.rest('/v_twilio_errors_summary?select=*&limit=5'),
       ]);
-      setStats(s[0]); setQuiet(q); setCosts(c[0]); setPendingSugg((sugg || []).length);
+      setStats(s[0]); setHealth(h[0]); setCosts(c[0]); setPendingSugg((sugg || []).length); setTwilioErrors(err || []);
     } catch (e) { toast(e.message, 'error'); }
   }, [api]);
   useEffect(() => { load(); }, [load]);
-
-  const runHealth = async () => { setBusy(true); try { setHealth(await api.fn('health-check')); } catch (e) { toast('Health-check: ' + e.message, 'error'); } finally { setBusy(false); } };
-  const send = async () => {
-    if (!qs.phone || !qs.body) return;
-    setSending(true);
-    try { await api.fn('send-sms', { phone_e164: qs.phone, body: qs.body }); toast('SMS envoyé'); setQs({ phone: '', body: '' }); load(); }
-    catch (e) { toast('Erreur: ' + e.message, 'error'); }
-    finally { setSending(false); }
-  };
-
-  if (!stats) return <div className="p-8 text-center text-slate-500">Chargement...</div>;
+  const runHealth = async () => { setBusy(true); try { setHealthRes(await api.fn('health-check')); } catch (e) { toast(e.message, 'error'); } finally { setBusy(false); } };
+  const send = async () => { if (!qs.phone || !qs.body) return; setSending(true); try { await api.fn('send-sms', { phone_e164: qs.phone, body: qs.body }); toast('SMS envoyé'); setQs({ phone: '', body: '' }); load(); } catch (e) { toast(e.message, 'error'); } finally { setSending(false); } };
+  if (!stats) return <Skeleton rows={6} h="h-20"/>;
+  const cbOpen = (health?.ai_errors_15min ?? 0) >= 5;
   return (<div className="space-y-4">
-    <Card className={'p-4 flex items-center gap-3 ' + (quiet ? 'border-amber-300 bg-amber-50' : '')}><div className={'w-10 h-10 rounded-full flex items-center justify-center ' + (quiet ? 'bg-amber-200 text-amber-800' : 'bg-emerald-100 text-emerald-700')}><IconClock/></div><div className="flex-1"><p className="font-semibold text-slate-900">{quiet ? 'Quiet hours actives' : 'Fenêtre d envoi ouverte'}</p><p className="text-xs text-slate-600">{quiet ? 'Bloqué par les réglages' : 'SMS autorisés'}</p></div></Card>
+    <Card className={'p-4 flex items-center gap-3 ' + (cbOpen ? 'border-rose-300 bg-rose-50' : '')}><div className={'w-10 h-10 rounded-full flex items-center justify-center ' + (cbOpen ? 'bg-rose-200 text-rose-800' : 'bg-emerald-100 text-emerald-700')}><IconActivity/></div><div className="flex-1"><p className="font-semibold text-slate-900">{cbOpen ? 'Circuit breaker ouvert' : 'Système opérationnel'}</p><p className="text-xs text-slate-600">Envoyé 1h: {health?.sent_last_1h ?? 0} · 24h: {health?.sent_last_24h ?? 0} · Reçu 24h: {health?.received_last_24h ?? 0}</p></div></Card>
     <div className="grid grid-cols-2 gap-3">
       <Card className="p-4"><p className="text-xs text-slate-500">Éligibles</p><p className="text-2xl font-bold text-slate-900">{stats.total_eligible}</p></Card>
       <Card className="p-4"><p className="text-xs text-slate-500">Jamais contactés</p><p className="text-2xl font-bold text-indigo-600">{stats.never_contacted}</p></Card>
       <Card className="p-4"><p className="text-xs text-slate-500">En attente</p><p className="text-2xl font-bold text-amber-600">{stats.sent_awaiting_reply}</p></Card>
       <Card className="p-4"><p className="text-xs text-slate-500">Ont répondu</p><p className="text-2xl font-bold text-emerald-600">{stats.replied}</p></Card>
-      <Card className="p-4"><p className="text-xs text-slate-500">Opt-outs</p><p className="text-2xl font-bold text-rose-600">{stats.opted_out}</p></Card>
       <Card className="p-4"><p className="text-xs text-slate-500">Sugg. à review</p><p className="text-2xl font-bold text-violet-600">{pendingSugg}</p></Card>
+      <Card className="p-4"><p className="text-xs text-slate-500">Opt-outs</p><p className="text-2xl font-bold text-rose-600">{stats.opted_out}</p></Card>
     </div>
-    <Card className="p-4"><p className="font-semibold text-slate-900 mb-3">Activité 24h</p><div className="flex gap-4"><div className="flex-1"><p className="text-xs text-slate-500">Envoyés</p><p className="text-xl font-bold">{stats.sent_last_24h}</p></div><div className="flex-1"><p className="text-xs text-slate-500">Reçus</p><p className="text-xl font-bold">{stats.received_last_24h}</p></div></div></Card>
-    {costs && (<Card className="p-4"><div className="flex items-center gap-2 mb-3"><IconSparkle className="w-4 h-4 text-violet-600"/><p className="font-semibold text-slate-900">Coûts IA Anthropic</p></div><div className="grid grid-cols-3 gap-3 text-sm"><div><p className="text-xs text-slate-500">24h</p><p className="font-bold text-violet-600">{fmtCost(costs.cost_24h_usd || 0)}</p></div><div><p className="text-xs text-slate-500">7j</p><p className="font-bold text-violet-600">{fmtCost(costs.cost_7d_usd || 0)}</p></div><div><p className="text-xs text-slate-500">30j</p><p className="font-bold text-violet-600">{fmtCost(costs.cost_30d_usd || 0)}</p></div></div><div className="flex gap-3 mt-2 text-xs text-slate-500 border-t pt-2"><span>Appels: <strong>{costs.calls_total || 0}</strong></span><span>Cache hit: <strong>{costs.cache_hit_rate_pct || 0}%</strong></span></div></Card>)}
-    <Card className="p-4"><p className="font-semibold text-slate-900 mb-3">Envoi rapide</p><div className="space-y-3"><Input label="Numéro E.164" value={qs.phone} onChange={v => setQs({ ...qs, phone: v })} placeholder="+15145551234"/><TextArea label="Message" value={qs.body} onChange={v => setQs({ ...qs, body: v })} placeholder="Bonjour..." rows={3}/><Button onClick={send} disabled={sending || !qs.phone || !qs.body} className="w-full"><IconSend className="w-4 h-4"/>{sending ? 'Envoi...' : 'Envoyer'}</Button></div></Card>
-    <Card className="p-4"><div className="flex items-center justify-between mb-3"><p className="font-semibold text-slate-900">Vérification système</p><Button variant="secondary" onClick={runHealth} disabled={busy}><IconRefresh className="w-4 h-4"/>{busy ? '...' : 'Tester'}</Button></div>{health && (<div className="space-y-1 text-sm"><Row k="Twilio SID" v={health.checks.twilio_account_sid}/><Row k="Twilio Token" v={health.checks.twilio_auth_token}/><Row k="Twilio From" v={health.checks.twilio_from}/><Row k="DB accessible" v={health.checks.db_accessible}/><Row k="API Twilio" v={health.checks.twilio_api_reachable}/>{health.checks.twilio_account_friendly_name && <p className="text-xs text-slate-500 mt-2">Compte: {health.checks.twilio_account_friendly_name}</p>}</div>)}</Card>
+    {costs && (<Card className="p-4"><div className="flex items-center gap-2 mb-3"><IconSparkle className="w-4 h-4 text-violet-600"/><p className="font-semibold text-slate-900">Coûts IA</p></div><div className="grid grid-cols-3 gap-3 text-sm"><div><p className="text-xs text-slate-500">24h</p><p className="font-bold text-violet-600">{fmtCost(costs.cost_24h_usd || 0)}</p></div><div><p className="text-xs text-slate-500">7j</p><p className="font-bold text-violet-600">{fmtCost(costs.cost_7d_usd || 0)}</p></div><div><p className="text-xs text-slate-500">30j</p><p className="font-bold text-violet-600">{fmtCost(costs.cost_30d_usd || 0)}</p></div></div><div className="flex gap-3 mt-2 text-xs text-slate-500 border-t pt-2"><span>Appels: <strong>{costs.calls_total || 0}</strong></span><span>Cache: <strong>{costs.cache_hit_rate_pct || 0}%</strong></span>{health?.ai_errors_24h > 0 && <span className="text-rose-600">Erreurs 24h: <strong>{health.ai_errors_24h}</strong></span>}</div></Card>)}
+    {twilioErrors.length > 0 && (<Card className="p-4"><p className="font-semibold text-slate-900 mb-3">Erreurs Twilio (top 5)</p><div className="space-y-1.5 text-sm">{twilioErrors.map(e => (<div key={e.error_code} className="flex items-center justify-between py-1 border-b border-slate-100 last:border-0"><div><p className="font-mono text-xs text-rose-600">{e.error_code}</p><p className="text-xs text-slate-600">{e.description || 'Inconnu'}</p></div><Badge color="rose">{e.occurrences}</Badge></div>))}</div></Card>)}
+    <Card className="p-4"><p className="font-semibold text-slate-900 mb-3">Envoi rapide</p><div className="space-y-3"><Input label="Numéro" value={qs.phone} onChange={v => setQs({ ...qs, phone: v })} placeholder="+15145551234"/><TextArea label="Message" value={qs.body} onChange={v => setQs({ ...qs, body: v })} rows={3}/><Button onClick={send} disabled={sending || !qs.phone || !qs.body} className="w-full"><IconSend className="w-4 h-4"/>{sending ? '...' : 'Envoyer'}</Button></div></Card>
+    <Card className="p-4"><div className="flex items-center justify-between mb-3"><p className="font-semibold text-slate-900">Vérification</p><Button variant="secondary" size="sm" onClick={runHealth} disabled={busy}><IconRefresh className="w-4 h-4"/>{busy ? '...' : 'Tester'}</Button></div>{healthRes && (<div className="space-y-1 text-sm">{Object.entries(healthRes.checks || {}).map(([k,v]) => (typeof v === 'boolean') && <div key={k} className="flex items-center justify-between"><span className="text-slate-600">{k}</span>{v ? <IconCheck className="w-4 h-4 text-emerald-600"/> : <IconAlert className="w-4 h-4 text-rose-600"/>}</div>)}</div>)}</Card>
   </div>);
 }
 
-// =====================================================================
-// LEADS
-// =====================================================================
-function LeadActions({ lead, onSend, onOptOut }) {
-  const [body, setBody] = useState('');
-  return (<div className="px-4 pb-4 border-t border-slate-100 pt-3 space-y-3"><TextArea value={body} onChange={setBody} placeholder="Message à envoyer..." rows={2}/><div className="flex gap-2"><Button onClick={() => { onSend(lead, body); setBody(''); }} disabled={!body} className="flex-1"><IconSend className="w-4 h-4"/>Envoyer</Button><Button variant="danger" onClick={() => onOptOut(lead)}><IconBan className="w-4 h-4"/></Button></div></div>);
-}
-function LeadsTab({ api, toast }) {
-  const [filter, setFilter] = useState('contactable');
-  const [search, setSearch] = useState('');
-  const [items, setItems] = useState([]);
-  const [page, setPage] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [expanded, setExpanded] = useState(null);
-  const [showAdd, setShowAdd] = useState(false);
-  const PAGE_SIZE = 20;
+function LeadsTab({ api, toast, openLead }) {
+  const [filter, setFilter] = useState('contactable'); const [search, setSearch] = useState(''); const [items, setItems] = useState([]); const [page, setPage] = useState(0); const [loading, setLoading] = useState(false); const [showAdd, setShowAdd] = useState(false); const [selectedIds, setSelectedIds] = useState(new Set()); const [bulkMode, setBulkMode] = useState(false); const [showBulkAction, setShowBulkAction] = useState(null); const PAGE_SIZE = 20;
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      let path = '/leads?select=id,company_name,contact_name,phone_e164,priority_tier,pipeline_stage,reply_status,last_sent_at,overall_need_score';
-      path += '&order=overall_need_score.desc.nullslast,last_sent_at.desc.nullslast';
-      path += '&limit=' + PAGE_SIZE + '&offset=' + (page * PAGE_SIZE);
-      path += '&phone_e164=like.%2B*&eligible_sms=eq.true';
+      let path = '/leads?select=id,company_name,contact_name,phone_e164,priority_tier,pipeline_stage,reply_status,last_sent_at,overall_need_score,personalized_hook&order=overall_need_score.desc.nullslast,last_sent_at.desc.nullslast&limit=' + PAGE_SIZE + '&offset=' + (page * PAGE_SIZE) + '&phone_e164=like.%2B*&eligible_sms=eq.true';
       if (filter === 'never') path += '&last_sent_at=is.null';
       else if (filter === 'awaiting') path += '&last_sent_at=not.is.null&reply_status=is.null';
       else if (filter === 'replied') path += '&reply_status=eq.replied';
       else if (filter === 'hot') path += '&priority_tier=eq.A%20-%20Hot%20Lead';
-      else if (filter === 'warm') path += '&priority_tier=eq.B%20-%20Warm%20Lead';
+      else if (filter === 'no_tier') path += '&priority_tier=is.null';
+      else if (filter === 'no_hook') path += '&personalized_hook=is.null';
       if (filter !== 'replied') path += '&or=(reply_status.is.null,reply_status.eq.no_reply)';
       if (search) path += '&company_name=ilike.*' + encodeURIComponent(search) + '*';
       setItems(await api.rest(path) || []);
-    } catch (e) { toast(e.message, 'error'); }
-    finally { setLoading(false); }
+    } catch (e) { toast(e.message, 'error'); } finally { setLoading(false); }
   }, [api, filter, search, page]);
   useEffect(() => { setPage(0); }, [filter, search]);
   useEffect(() => { load(); }, [load]);
-  const sendOne = async (lead, body) => { if (!body) return; try { await api.fn('send-sms', { lead_id: lead.id, body }); toast('Envoyé à ' + (lead.company_name || lead.phone_e164)); load(); } catch (e) { toast('Erreur: ' + e.message, 'error'); } };
-  const optOutOne = async (lead) => { if (!confirm('Marquer ' + (lead.company_name || lead.phone_e164) + ' comme opt-out?')) return; try { await api.rpc('add_manual_opt_out', { p_phone: lead.phone_e164, p_reason: 'manual_dashboard' }); toast('Opt-out ajouté'); load(); } catch (e) { toast(e.message, 'error'); } };
-  const filters = [{ id: 'contactable', label: 'Contactables' }, { id: 'never', label: 'Jamais contactés' }, { id: 'awaiting', label: 'En attente' }, { id: 'replied', label: 'Ont répondu' }, { id: 'hot', label: 'Hot' }, { id: 'warm', label: 'Warm' }];
-  return (<div className="space-y-4 relative">
-    <Input value={search} onChange={setSearch} placeholder="Rechercher une entreprise..."/>
+  const toggleSelect = id => { const s = new Set(selectedIds); s.has(id) ? s.delete(id) : s.add(id); setSelectedIds(s); };
+  const filters = [{ id: 'contactable', label: 'Tous' }, { id: 'never', label: 'Jamais' }, { id: 'awaiting', label: 'Attente' }, { id: 'replied', label: 'Répondu' }, { id: 'hot', label: 'Hot' }, { id: 'no_tier', label: 'Sans tier' }, { id: 'no_hook', label: 'Sans hook' }];
+  const exportCsv = async () => { try { await api.download('/leads?select=id,company_name,contact_name,phone_e164,email,priority_tier,pipeline_stage,reply_status,personalized_hook,site_notes,overall_need_score,website,last_sent_at&phone_e164=like.%2B*&eligible_sms=eq.true', 'leads_' + new Date().toISOString().slice(0,10) + '.csv'); toast('Export OK'); } catch (e) { toast(e.message, 'error'); } };
+  return (<div className="space-y-3 relative">
+    <Input value={search} onChange={setSearch} placeholder="Rechercher entreprise..."/>
     <div className="flex gap-2 overflow-x-auto scrollbar-thin -mx-4 px-4 pb-1">{filters.map(f => (<button key={f.id} onClick={() => setFilter(f.id)} className={'shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition ' + (filter === f.id ? 'bg-indigo-600 text-white' : 'bg-white border border-slate-200 text-slate-700')}>{f.label}</button>))}</div>
-    {loading && <div className="p-8 text-center text-slate-500">Chargement...</div>}
-    {!loading && items.length === 0 && <div className="p-8 text-center text-slate-500">Aucun lead</div>}
-    <div className="space-y-2">{items.map(l => (<Card key={l.id} className="overflow-hidden"><button onClick={() => setExpanded(expanded === l.id ? null : l.id)} className="w-full text-left p-4 flex items-start justify-between gap-3"><div className="flex-1 min-w-0"><p className="font-semibold text-slate-900 truncate">{l.company_name || '(Sans nom)'}</p><p className="text-sm text-slate-500 truncate">{l.contact_name || '—'} · {l.phone_e164}</p><div className="flex flex-wrap gap-1 mt-1.5">{l.priority_tier && <Badge color={tierColor(l.priority_tier)}>{l.priority_tier.split(' - ')[0]}</Badge>}{l.pipeline_stage && <Badge color="slate">{l.pipeline_stage}</Badge>}{l.last_sent_at && <Badge color="slate">Envoyé {fmtRelative(l.last_sent_at)}</Badge>}{l.reply_status === 'replied' && <Badge color="emerald">A répondu</Badge>}</div></div><IconChevron className={'w-5 h-5 text-slate-400 transition shrink-0 ' + (expanded === l.id ? 'rotate-90' : '')}/></button>{expanded === l.id && <LeadActions lead={l} onSend={sendOne} onOptOut={optOutOne}/>}</Card>))}</div>
-    <div className="flex items-center justify-between"><Button variant="secondary" onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0 || loading}>Précédent</Button><span className="text-sm text-slate-500">Page {page + 1}</span><Button variant="secondary" onClick={() => setPage(page + 1)} disabled={items.length < PAGE_SIZE || loading}>Suivant</Button></div>
-    <button onClick={() => setShowAdd(true)} className="fixed bottom-24 right-4 w-14 h-14 rounded-full bg-indigo-600 text-white shadow-lg flex items-center justify-center hover:bg-indigo-700 active:scale-95 z-40"><IconPlus className="w-6 h-6"/></button>
+    <div className="flex gap-2 items-center flex-wrap"><Button variant="secondary" size="sm" onClick={() => { setBulkMode(!bulkMode); setSelectedIds(new Set()); }}>{bulkMode ? 'Annuler' : 'Multi-sélection'}</Button>{bulkMode && selectedIds.size > 0 && (<><Badge color="indigo">{selectedIds.size}</Badge><Button size="sm" onClick={() => setShowBulkAction('tier')}>Set tier</Button><Button variant="secondary" size="sm" onClick={() => setShowBulkAction('stage')}>Set stage</Button></>)}<Button variant="ghost" size="sm" onClick={exportCsv} className="ml-auto"><IconDownload className="w-4 h-4"/>CSV</Button></div>
+    {loading && <Skeleton rows={5} h="h-20"/>}
+    {!loading && items.length === 0 && <Card className="p-8 text-center text-slate-500">Aucun lead</Card>}
+    <div className="space-y-2">{items.map(l => (<Card key={l.id} className="overflow-hidden"><div className="flex items-stretch">{bulkMode && (<button onClick={() => toggleSelect(l.id)} className="px-3 flex items-center bg-slate-50 border-r border-slate-200"><div className={'w-5 h-5 rounded border-2 flex items-center justify-center ' + (selectedIds.has(l.id) ? 'bg-indigo-600 border-indigo-600' : 'border-slate-300')}>{selectedIds.has(l.id) && <IconCheck className="w-3 h-3 text-white"/>}</div></button>)}<button onClick={() => bulkMode ? toggleSelect(l.id) : openLead(l)} className="flex-1 text-left p-4 flex items-start justify-between gap-3 min-w-0"><div className="flex-1 min-w-0"><p className="font-semibold text-slate-900 truncate">{l.company_name || '(Sans nom)'}</p><p className="text-sm text-slate-500 truncate">{l.contact_name || '—'} · {l.phone_e164}</p><div className="flex flex-wrap gap-1 mt-1.5">{l.priority_tier && <Badge color={tierColor(l.priority_tier)}>{l.priority_tier.split(' - ')[0]}</Badge>}{l.pipeline_stage && <Badge color="slate">{l.pipeline_stage}</Badge>}{l.last_sent_at && <Badge color="slate">Env. {fmtRelative(l.last_sent_at)}</Badge>}{l.reply_status === 'replied' && <Badge color="emerald">Répondu</Badge>}{!l.personalized_hook && <Badge color="amber">Sans hook</Badge>}</div></div><IconChevron className="w-5 h-5 text-slate-400 shrink-0"/></button></div></Card>))}</div>
+    <div className="flex items-center justify-between"><Button variant="secondary" size="sm" onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0 || loading}>Préc.</Button><span className="text-sm text-slate-500">Page {page + 1}</span><Button variant="secondary" size="sm" onClick={() => setPage(page + 1)} disabled={items.length < PAGE_SIZE || loading}>Suiv.</Button></div>
+    <button onClick={() => setShowAdd(true)} className="fixed bottom-24 right-4 w-14 h-14 rounded-full bg-indigo-600 text-white shadow-lg flex items-center justify-center z-40"><IconPlus className="w-6 h-6"/></button>
     <AddLeadModal open={showAdd} onClose={() => setShowAdd(false)} api={api} toast={toast} onAdded={() => { setShowAdd(false); load(); }}/>
+    <BulkActionModal open={!!showBulkAction} action={showBulkAction} onClose={() => setShowBulkAction(null)} ids={Array.from(selectedIds)} api={api} toast={toast} onDone={() => { setShowBulkAction(null); setSelectedIds(new Set()); setBulkMode(false); load(); }}/>
   </div>);
 }
+function BulkActionModal({ open, action, ids, onClose, api, toast, onDone }) {
+  const [val, setVal] = useState(''); const [busy, setBusy] = useState(false);
+  useEffect(() => { setVal(''); }, [open]);
+  const submit = async () => { if (!val) return; setBusy(true); try { const fn = action === 'tier' ? 'bulk_update_lead_tier' : 'bulk_update_lead_stage'; const arg = action === 'tier' ? { p_lead_ids: ids, p_tier: val } : { p_lead_ids: ids, p_stage: val }; const n = await api.rpc(fn, arg); toast(n + ' mis à jour'); onDone(); } catch (e) { toast(e.message, 'error'); } finally { setBusy(false); } };
+  if (!open) return null;
+  return (<Modal open={open} onClose={onClose} title={action === 'tier' ? 'Set tier (bulk)' : 'Set stage (bulk)'}><div className="space-y-3"><p className="text-sm text-slate-600">{ids.length} leads</p>{action === 'tier' ? <Select label="Tier" value={val} onChange={setVal} options={tierOptions()}/> : <Select label="Stage" value={val} onChange={setVal} options={stageOptions()}/>}<div className="flex gap-2"><Button variant="secondary" onClick={onClose} className="flex-1">Annuler</Button><Button onClick={submit} disabled={busy || !val} className="flex-1">{busy ? '...' : 'Appliquer'}</Button></div></div></Modal>);
+}
 function AddLeadModal({ open, onClose, api, toast, onAdded }) {
-  const [form, setForm] = useState({ company_name: '', contact_name: '', phone_e164: '', email: '', personalized_hook: '', priority_tier: '' });
-  const [busy, setBusy] = useState(false);
-  const submit = async () => {
-    if (!form.phone_e164 || !form.phone_e164.startsWith('+')) return toast('Numéro E.164 requis (avec +)', 'warn');
-    setBusy(true);
-    try { await api.insert('leads', { company_name: form.company_name || null, contact_name: form.contact_name || null, phone_e164: form.phone_e164, email: form.email || null, personalized_hook: form.personalized_hook || null, priority_tier: form.priority_tier || null, eligible_sms: true });
-      toast('Lead ajouté'); setForm({ company_name: '', contact_name: '', phone_e164: '', email: '', personalized_hook: '', priority_tier: '' }); onAdded(); }
-    catch (e) { toast('Erreur: ' + e.message, 'error'); }
-    finally { setBusy(false); }
-  };
-  return (<Modal open={open} onClose={onClose} title="Nouveau lead"><div className="space-y-3"><Input label="Numéro E.164*" value={form.phone_e164} onChange={v => setForm({ ...form, phone_e164: v })} placeholder="+15145551234"/><Input label="Entreprise" value={form.company_name} onChange={v => setForm({ ...form, company_name: v })}/><Input label="Contact" value={form.contact_name} onChange={v => setForm({ ...form, contact_name: v })}/><Input label="Email" value={form.email} onChange={v => setForm({ ...form, email: v })}/><Input label="Hook personnalisé" value={form.personalized_hook} onChange={v => setForm({ ...form, personalized_hook: v })}/><Input label="Tier" value={form.priority_tier} onChange={v => setForm({ ...form, priority_tier: v })} placeholder="A - Hot Lead"/><div className="flex gap-2 pt-2"><Button variant="secondary" onClick={onClose} className="flex-1">Annuler</Button><Button onClick={submit} disabled={busy} className="flex-1">{busy ? '...' : 'Ajouter'}</Button></div></div></Modal>);
+  const [form, setForm] = useState({ company_name: '', contact_name: '', phone_e164: '', email: '', personalized_hook: '', priority_tier: '' }); const [busy, setBusy] = useState(false);
+  const submit = async () => { if (!form.phone_e164 || !form.phone_e164.startsWith('+')) return toast('Numéro E.164 requis', 'warn'); setBusy(true); try { await api.insert('leads', { company_name: form.company_name || null, contact_name: form.contact_name || null, phone_e164: form.phone_e164, email: form.email || null, personalized_hook: form.personalized_hook || null, priority_tier: form.priority_tier || null, eligible_sms: true }); toast('Lead ajouté'); setForm({ company_name: '', contact_name: '', phone_e164: '', email: '', personalized_hook: '', priority_tier: '' }); onAdded(); } catch (e) { toast(e.message, 'error'); } finally { setBusy(false); } };
+  return (<Modal open={open} onClose={onClose} title="Nouveau lead"><div className="space-y-3"><Input label="Numéro E.164*" value={form.phone_e164} onChange={v => setForm({ ...form, phone_e164: v })} placeholder="+15145551234"/><Input label="Entreprise" value={form.company_name} onChange={v => setForm({ ...form, company_name: v })}/><Input label="Contact" value={form.contact_name} onChange={v => setForm({ ...form, contact_name: v })}/><Input label="Email" value={form.email} onChange={v => setForm({ ...form, email: v })}/><Input label="Hook" value={form.personalized_hook} onChange={v => setForm({ ...form, personalized_hook: v })}/><Select label="Tier" value={form.priority_tier} onChange={v => setForm({ ...form, priority_tier: v })} options={tierOptions()}/><div className="flex gap-2 pt-2"><Button variant="secondary" onClick={onClose} className="flex-1">Annuler</Button><Button onClick={submit} disabled={busy} className="flex-1">{busy ? '...' : 'Ajouter'}</Button></div></div></Modal>);
 }
 
-// =====================================================================
-// CAMPAIGNS
-// =====================================================================
 function CampaignsTab({ api, toast }) {
-  const [campaigns, setCampaigns] = useState([]);
-  const [showCreate, setShowCreate] = useState(false);
-  const [selected, setSelected] = useState(null);
-  const load = useCallback(async () => { try { setCampaigns(await api.rest('/v_campaigns_overview?select=*&order=created_at.desc&limit=50') || []); } catch (e) { toast(e.message, 'error'); } }, [api]);
+  const [campaigns, setCampaigns] = useState([]); const [showCreate, setShowCreate] = useState(false); const [selected, setSelected] = useState(null); const [loading, setLoading] = useState(false);
+  const load = useCallback(async () => { setLoading(true); try { setCampaigns(await api.rest('/v_campaign_performance?select=*&order=launched_at.desc.nullslast&limit=50') || []); } catch (e) { toast(e.message, 'error'); } finally { setLoading(false); } }, [api]);
   useEffect(() => { load(); }, [load]);
-  const statusColor = s => s === 'running' ? 'amber' : s === 'completed' ? 'emerald' : s === 'ready' ? 'indigo' : 'slate';
+  const sc = s => s === 'running' ? 'amber' : s === 'completed' ? 'emerald' : s === 'ready' ? 'indigo' : s === 'paused' ? 'rose' : 'slate';
   if (selected) return <CampaignDetail campaign={selected} api={api} toast={toast} onBack={() => { setSelected(null); load(); }}/>;
   return (<div className="space-y-4 relative">
-    {campaigns.length === 0 && <Card className="p-8 text-center text-slate-500"><IconMegaphone className="w-12 h-12 mx-auto mb-2 text-slate-300"/><p>Aucune campagne</p><p className="text-xs mt-1">Crée ta première campagne avec le bouton +</p></Card>}
-    <div className="space-y-2">{campaigns.map(c => (<Card key={c.id}><button onClick={() => setSelected(c)} className="w-full text-left p-4"><div className="flex items-start justify-between gap-2"><p className="font-semibold text-slate-900 truncate flex-1">{c.name}</p><div className="flex gap-1">{c.mode === 'ai_generated' && <Badge color="violet"><IconSparkle className="w-3 h-3 inline"/> IA</Badge>}<Badge color={statusColor(c.status)}>{c.status}</Badge></div></div>{c.description && <p className="text-xs text-slate-500 mt-1">{c.description}</p>}<div className="flex flex-wrap gap-3 mt-2 text-xs text-slate-500"><span>Cibles: <strong className="text-slate-700">{c.total_targeted}</strong></span><span>Envoyés: <strong className="text-emerald-600">{c.sent}</strong></span><span>Pending: <strong className="text-indigo-600">{c.pending}</strong></span>{c.failed > 0 && <span>Échecs: <strong className="text-rose-600">{c.failed}</strong></span>}</div></button></Card>))}</div>
-    <button onClick={() => setShowCreate(true)} className="fixed bottom-24 right-4 w-14 h-14 rounded-full bg-indigo-600 text-white shadow-lg flex items-center justify-center hover:bg-indigo-700 active:scale-95 z-40"><IconPlus className="w-6 h-6"/></button>
+    {loading && <Skeleton rows={3} h="h-24"/>}
+    {!loading && campaigns.length === 0 && <Card className="p-8 text-center text-slate-500"><IconMegaphone className="w-12 h-12 mx-auto mb-2 text-slate-300"/><p>Aucune campagne</p></Card>}
+    <div className="space-y-2">{campaigns.map(c => (<Card key={c.id}><button onClick={() => setSelected(c)} className="w-full text-left p-4"><div className="flex items-start justify-between gap-2"><p className="font-semibold text-slate-900 truncate flex-1">{c.name}</p><div className="flex gap-1">{c.mode === 'ai_generated' && <Badge color="violet"><IconSparkle className="w-3 h-3 inline"/> IA</Badge>}<Badge color={sc(c.status)}>{c.status}</Badge></div></div><div className="flex flex-wrap gap-3 mt-2 text-xs text-slate-500"><span>Cibles: <strong>{c.total_targeted}</strong></span><span>Envoyés: <strong className="text-emerald-600">{c.total_sent}</strong></span>{c.replies_count > 0 && <span>Rép: <strong className="text-emerald-600">{c.replies_count} ({c.reply_rate_pct}%)</strong></span>}{c.total_failed > 0 && <span>Échecs: <strong className="text-rose-600">{c.total_failed}</strong></span>}{c.ai_cost_usd > 0 && <span>{fmtCost(c.ai_cost_usd)}</span>}</div></button></Card>))}</div>
+    <button onClick={() => setShowCreate(true)} className="fixed bottom-24 right-4 w-14 h-14 rounded-full bg-indigo-600 text-white shadow-lg flex items-center justify-center z-40"><IconPlus className="w-6 h-6"/></button>
     <CreateCampaignModal open={showCreate} onClose={() => setShowCreate(false)} api={api} toast={toast} onCreated={() => { setShowCreate(false); load(); }}/>
   </div>);
 }
 function CreateCampaignModal({ open, onClose, api, toast, onCreated }) {
   const [mode, setMode] = useState('ai_generated');
   const [form, setForm] = useState({ name: '', description: '', message_template: '', campaign_brief: 'Ton direct, factuel. Approche curieuse, presque amicale, pas vendeuse. PME francophones du QC.', filter_priority_tier: '', filter_pipeline_stage: '', filter_only_uncontacted: true, filter_min_score: '', filter_max_score: '', filter_company_keyword: '' });
-  const [preview, setPreview] = useState(null);
-  const [busy, setBusy] = useState(false);
-  const variables = ['{{company_name}}', '{{contact_name}}', '{{first_name}}', '{{personalized_hook}}', '{{site_notes}}', '{{priority_tier}}'];
+  const [preview, setPreview] = useState(null); const [busy, setBusy] = useState(false);
+  const variables = ['{{company_name}}', '{{first_name}}', '{{personalized_hook}}', '{{site_notes}}'];
   const insertVar = v => setForm({ ...form, message_template: form.message_template + v });
-  const buildArgs = () => ({
-    p_template: form.message_template, p_filter_priority_tier: form.filter_priority_tier || null,
-    p_filter_pipeline_stage: form.filter_pipeline_stage || null, p_filter_only_uncontacted: form.filter_only_uncontacted,
-    p_filter_min_score: form.filter_min_score ? parseInt(form.filter_min_score, 10) : null,
-    p_filter_max_score: form.filter_max_score ? parseInt(form.filter_max_score, 10) : null,
-    p_filter_company_keyword: form.filter_company_keyword || null,
-  });
-  const doPreview = async () => {
-    if (mode === 'template' && !form.message_template) return toast('Template requis', 'warn');
-    setBusy(true);
-    try {
-      if (mode === 'template') setPreview(await api.rpc('preview_campaign', { ...buildArgs(), p_limit: 5 }));
-      else {
-        // En mode AI on peut juste compter les leads matchant via preview_campaign avec un template bidon
-        const r = await api.rpc('preview_campaign', { ...buildArgs(), p_template: '(généré par IA)', p_limit: 1 });
-        setPreview(r);
-      }
-    } catch (e) { toast(e.message, 'error'); }
-    finally { setBusy(false); }
-  };
+  const buildArgs = () => ({ p_template: form.message_template, p_filter_priority_tier: form.filter_priority_tier || null, p_filter_pipeline_stage: form.filter_pipeline_stage || null, p_filter_only_uncontacted: form.filter_only_uncontacted, p_filter_min_score: form.filter_min_score ? parseInt(form.filter_min_score, 10) : null, p_filter_max_score: form.filter_max_score ? parseInt(form.filter_max_score, 10) : null, p_filter_company_keyword: form.filter_company_keyword || null });
+  const doPreview = async () => { setBusy(true); try { const tmpl = mode === 'template' ? form.message_template : '(IA)'; setPreview(await api.rpc('preview_campaign', { ...buildArgs(), p_template: tmpl, p_limit: mode === 'template' ? 5 : 1 })); } catch (e) { toast(e.message, 'error'); } finally { setBusy(false); } };
   const create = async () => {
     if (!form.name) return toast('Nom requis', 'warn');
     if (mode === 'template' && !form.message_template) return toast('Template requis', 'warn');
-    if (mode === 'ai_generated' && !form.campaign_brief) return toast('Brief requis pour mode IA', 'warn');
+    if (mode === 'ai_generated' && !form.campaign_brief) return toast('Brief requis', 'warn');
     setBusy(true);
-    try {
-      await api.insert('campaigns', {
-        name: form.name, description: form.description || null, mode,
-        message_template: mode === 'template' ? form.message_template : null,
-        campaign_brief: mode === 'ai_generated' ? form.campaign_brief : null,
-        filter_priority_tier: form.filter_priority_tier || null, filter_pipeline_stage: form.filter_pipeline_stage || null,
-        filter_only_uncontacted: form.filter_only_uncontacted,
-        filter_min_score: form.filter_min_score ? parseInt(form.filter_min_score, 10) : null,
-        filter_max_score: form.filter_max_score ? parseInt(form.filter_max_score, 10) : null,
-        filter_company_keyword: form.filter_company_keyword || null, status: 'draft',
-      });
-      toast('Campagne créée'); onCreated();
-    } catch (e) { toast(e.message, 'error'); }
-    finally { setBusy(false); }
+    try { await api.insert('campaigns', { name: form.name, description: form.description || null, mode, message_template: mode === 'template' ? form.message_template : null, campaign_brief: mode === 'ai_generated' ? form.campaign_brief : null, filter_priority_tier: form.filter_priority_tier || null, filter_pipeline_stage: form.filter_pipeline_stage || null, filter_only_uncontacted: form.filter_only_uncontacted, filter_min_score: form.filter_min_score ? parseInt(form.filter_min_score, 10) : null, filter_max_score: form.filter_max_score ? parseInt(form.filter_max_score, 10) : null, filter_company_keyword: form.filter_company_keyword || null, status: 'draft' }); toast('Créée'); onCreated(); }
+    catch (e) { toast(e.message, 'error'); } finally { setBusy(false); }
   };
-  return (<Modal open={open} onClose={onClose} title="Nouvelle campagne"><div className="space-y-3">
-    <div className="flex gap-2 p-1 bg-slate-100 rounded-xl"><button onClick={() => setMode('ai_generated')} className={'flex-1 py-2 rounded-lg text-sm font-medium transition flex items-center justify-center gap-1 ' + (mode === 'ai_generated' ? 'bg-white shadow text-violet-700' : 'text-slate-600')}><IconSparkle className="w-4 h-4"/>Généré par IA</button><button onClick={() => setMode('template')} className={'flex-1 py-2 rounded-lg text-sm font-medium transition ' + (mode === 'template' ? 'bg-white shadow text-indigo-700' : 'text-slate-600')}>Template</button></div>
-    <Input label="Nom*" value={form.name} onChange={v => setForm({ ...form, name: v })} placeholder="Hot leads Avril"/>
+  return (<Modal open={open} onClose={onClose} title="Nouvelle campagne" size="lg"><div className="space-y-3">
+    <div className="flex gap-2 p-1 bg-slate-100 rounded-xl"><button onClick={() => setMode('ai_generated')} className={'flex-1 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-1 ' + (mode === 'ai_generated' ? 'bg-white shadow text-violet-700' : 'text-slate-600')}><IconSparkle className="w-4 h-4"/>IA</button><button onClick={() => setMode('template')} className={'flex-1 py-2 rounded-lg text-sm font-medium ' + (mode === 'template' ? 'bg-white shadow text-indigo-700' : 'text-slate-600')}>Template</button></div>
+    <Input label="Nom*" value={form.name} onChange={v => setForm({ ...form, name: v })}/>
     <Input label="Description" value={form.description} onChange={v => setForm({ ...form, description: v })}/>
-    {mode === 'template' && (<><TextArea label="Message template*" value={form.message_template} onChange={v => setForm({ ...form, message_template: v })} rows={4} placeholder="Salut {{first_name}}, j'ai vu {{personalized_hook}}..." mono helper="Variables disponibles ci-dessous"/><div className="flex flex-wrap gap-1">{variables.map(v => <button key={v} onClick={() => insertVar(v)} className="text-xs px-2 py-1 bg-indigo-50 text-indigo-700 rounded">{v}</button>)}</div></>)}
-    {mode === 'ai_generated' && (<TextArea label="Brief de campagne*" value={form.campaign_brief} onChange={v => setForm({ ...form, campaign_brief: v })} rows={4} helper="Instructions pour l'IA: ton, style, angle. Chaque SMS sera unique."/>)}
+    {mode === 'template' && (<><TextArea label="Template*" value={form.message_template} onChange={v => setForm({ ...form, message_template: v })} rows={4} mono/><div className="flex flex-wrap gap-1">{variables.map(v => <button key={v} onClick={() => insertVar(v)} className="text-xs px-2 py-1 bg-indigo-50 text-indigo-700 rounded">{v}</button>)}</div></>)}
+    {mode === 'ai_generated' && (<TextArea label="Brief de campagne*" value={form.campaign_brief} onChange={v => setForm({ ...form, campaign_brief: v })} rows={4} helper="Instructions pour l'IA: ton, style, angle."/>)}
     <div className="text-xs font-medium text-slate-500 pt-2">Filtres</div>
-    <Input label="Priority Tier" value={form.filter_priority_tier} onChange={v => setForm({ ...form, filter_priority_tier: v })} placeholder="A - Hot Lead"/>
-    <Input label="Pipeline Stage" value={form.filter_pipeline_stage} onChange={v => setForm({ ...form, filter_pipeline_stage: v })}/>
+    <Input label="Tier" value={form.filter_priority_tier} onChange={v => setForm({ ...form, filter_priority_tier: v })} placeholder="A - Hot Lead"/>
+    <Input label="Stage" value={form.filter_pipeline_stage} onChange={v => setForm({ ...form, filter_pipeline_stage: v })}/>
     <div className="grid grid-cols-2 gap-2"><Input label="Score min" value={form.filter_min_score} onChange={v => setForm({ ...form, filter_min_score: v })} type="number"/><Input label="Score max" value={form.filter_max_score} onChange={v => setForm({ ...form, filter_max_score: v })} type="number"/></div>
-    <Input label="Mot-clé nom (opt.)" value={form.filter_company_keyword} onChange={v => setForm({ ...form, filter_company_keyword: v })}/>
-    <Toggle checked={form.filter_only_uncontacted} onChange={v => setForm({ ...form, filter_only_uncontacted: v })} label="Seulement leads jamais contactés"/>
-    <Button variant="secondary" onClick={doPreview} disabled={busy} className="w-full"><IconEye className="w-4 h-4"/>{busy ? '...' : 'Aperçu du ciblage'}</Button>
-    {preview && preview.length > 0 && (<Card className="p-3 bg-slate-50"><p className="text-sm font-semibold mb-2">{preview[0].total_matching} leads correspondent</p>{mode === 'template' && <div className="space-y-2 max-h-48 overflow-y-auto">{preview.map(p => (<div key={p.lead_id} className="text-xs bg-white p-2 rounded"><p className="font-medium text-slate-900">{p.company_name || '—'} ({p.rendered_length} car.)</p><p className="text-slate-600 mt-1 whitespace-pre-wrap">{p.rendered_body}</p></div>))}</div>}{mode === 'ai_generated' && <p className="text-xs text-slate-500">Les SMS uniques seront générés après matérialisation (bouton "Préparer" puis "Générer aperçus").</p>}</Card>)}
-    {preview && preview.length === 0 && <div className="text-sm text-amber-700 bg-amber-50 p-2 rounded">Aucun lead correspondant</div>}
+    <Input label="Mot-clé" value={form.filter_company_keyword} onChange={v => setForm({ ...form, filter_company_keyword: v })}/>
+    <Toggle checked={form.filter_only_uncontacted} onChange={v => setForm({ ...form, filter_only_uncontacted: v })} label="Seulement non-contactés"/>
+    <Button variant="secondary" onClick={doPreview} disabled={busy} className="w-full"><IconEye className="w-4 h-4"/>{busy ? '...' : 'Aperçu'}</Button>
+    {preview && preview.length > 0 && (<Card className="p-3 bg-slate-50"><p className="text-sm font-semibold mb-2">{preview[0].total_matching} leads</p>{mode === 'template' && <div className="space-y-2 max-h-48 overflow-y-auto">{preview.map(p => (<div key={p.lead_id} className="text-xs bg-white p-2 rounded"><p className="font-medium">{p.company_name || '—'}</p><p className="text-slate-600 mt-1 whitespace-pre-wrap">{p.rendered_body}</p></div>))}</div>}</Card>)}
+    {preview && preview.length === 0 && <div className="text-sm text-amber-700 bg-amber-50 p-2 rounded">Aucun lead</div>}
     <div className="flex gap-2 pt-2"><Button variant="secondary" onClick={onClose} className="flex-1">Annuler</Button><Button onClick={create} disabled={busy} className="flex-1">Créer</Button></div>
   </div></Modal>);
 }
 function CampaignDetail({ campaign, api, toast, onBack }) {
-  const [c, setC] = useState(campaign);
-  const [busy, setBusy] = useState(false);
-  const [recipients, setRecipients] = useState([]);
-  const [showRecipients, setShowRecipients] = useState(false);
-  const reload = async () => { try { const r = await api.rest('/v_campaigns_overview?id=eq.' + c.id + '&select=*&limit=1'); if (r && r[0]) setC(r[0]); } catch (e) { toast(e.message, 'error'); } };
-  const loadRecipients = async () => { try { const r = await api.rest('/campaign_recipients?campaign_id=eq.' + c.id + '&select=id,lead_id,status,rendered_body,error_message&order=created_at.asc&limit=100'); setRecipients(r || []); } catch (e) { toast(e.message, 'error'); } };
-  useEffect(() => { if (showRecipients) loadRecipients(); }, [showRecipients, c.pending, c.sent]);
-  const materialize = async () => { setBusy(true); try { const n = await api.rpc('materialize_campaign_recipients', { p_campaign_id: c.id }); toast(n + ' recipients prêts'); reload(); } catch (e) { toast(e.message, 'error'); } finally { setBusy(false); } };
-  const generatePreviews = async () => { setBusy(true); try { const r = await api.fn('preview-campaign-outreach', { campaign_id: c.id, limit: 30 }); toast('Générés: ' + r.generated + ' / Coût: $' + (parseFloat(r.total_cost_usd) || 0).toFixed(4)); reload(); if (showRecipients) loadRecipients(); } catch (e) { toast(e.message, 'error'); } finally { setBusy(false); } };
-  const launch = async dryRun => { setBusy(true); try { const r = await api.fn('process-campaign', { campaign_id: c.id, limit: 50, dry_run: dryRun }); if (dryRun) toast('Dry-run: ' + (r.would_process || 0) + ' à traiter'); else toast('Envoyés: ' + (r.sent_ok || 0) + ' / Skip: ' + (r.skipped || 0) + ' / Err: ' + (r.errors || 0)); reload(); } catch (e) { toast(e.message, 'error'); } finally { setBusy(false); } };
+  const [c, setC] = useState(campaign); const [busy, setBusy] = useState(false); const [recipients, setRecipients] = useState([]); const [showR, setShowR] = useState(false);
+  const reload = async () => { try { const r = await api.rest('/v_campaign_performance?id=eq.' + c.id + '&select=*&limit=1'); if (r && r[0]) setC(r[0]); } catch (e) { toast(e.message, 'error'); } };
+  const loadR = async () => { try { setRecipients(await api.rest('/campaign_recipients?campaign_id=eq.' + c.id + '&select=id,lead_id,status,rendered_body,error_message&order=created_at.asc&limit=100') || []); } catch (e) { toast(e.message, 'error'); } };
+  useEffect(() => { if (showR) loadR(); }, [showR, c.total_sent]);
+  const materialize = async () => { setBusy(true); try { const n = await api.rpc('materialize_campaign_recipients', { p_campaign_id: c.id }); toast(n + ' prêts'); reload(); } catch (e) { toast(e.message, 'error'); } finally { setBusy(false); } };
+  const generatePreviews = async () => { setBusy(true); try { const r = await api.fn('preview-campaign-outreach', { campaign_id: c.id, limit: 30 }); toast('Gén: ' + r.generated + ' / $' + parseFloat(r.total_cost_usd).toFixed(4)); reload(); if (showR) loadR(); } catch (e) { toast(e.message, 'error'); } finally { setBusy(false); } };
+  const launch = async (dry, requeue) => { setBusy(true); try { const r = await api.fn('process-campaign', { campaign_id: c.id, limit: 50, dry_run: dry, requeue_failed: requeue }); if (dry) toast('Dry: ' + r.would_process + (r.requeued_count ? ' (+' + r.requeued_count + ' requeue)' : '')); else toast('OK: ' + r.sent_ok + ' / Skip: ' + r.skipped + ' / Err: ' + r.errors); reload(); if (showR) loadR(); } catch (e) { toast(e.message, 'error'); } finally { setBusy(false); } };
   const archive = async () => { if (!confirm('Archiver?')) return; try { await api.update('campaigns', 'id=eq.' + c.id, { status: 'archived' }); toast('Archivée'); onBack(); } catch (e) { toast(e.message, 'error'); } };
+  const resume = async () => { try { await api.update('campaigns', 'id=eq.' + c.id, { status: 'running' }); toast('Reprise'); reload(); } catch (e) { toast(e.message, 'error'); } };
   const isAI = c.mode === 'ai_generated';
   const previewCount = recipients.filter(r => r.rendered_body && r.rendered_body.trim() !== '').length;
+  const failedCount = recipients.filter(r => r.status === 'failed').length;
+  const pending = (c.total_targeted || 0) - (c.total_sent || 0) - (c.total_failed || 0) - (c.total_skipped || 0);
   return (<div className="space-y-4">
     <button onClick={onBack} className="flex items-center gap-2 text-sm text-slate-600"><IconArrowLeft className="w-4 h-4"/>Retour</button>
-    <Card className="p-4"><div className="flex items-center justify-between mb-2"><h2 className="text-lg font-bold">{c.name}</h2><div className="flex gap-1">{isAI && <Badge color="violet"><IconSparkle className="w-3 h-3 inline"/> IA</Badge>}<Badge color={c.status === 'running' ? 'amber' : c.status === 'completed' ? 'emerald' : c.status === 'ready' ? 'indigo' : 'slate'}>{c.status}</Badge></div></div>{c.description && <p className="text-sm text-slate-600 mb-3">{c.description}</p>}{isAI ? (<div className="bg-violet-50 p-3 rounded-lg text-sm"><p className="text-xs font-semibold text-violet-700 mb-1">Brief campagne</p><p className="text-slate-700 whitespace-pre-wrap">{c.campaign_brief}</p></div>) : (<div className="bg-slate-50 p-3 rounded-lg text-sm font-mono whitespace-pre-wrap">{c.message_template}</div>)}</Card>
-    <div className="grid grid-cols-2 gap-2"><Card className="p-3"><p className="text-xs text-slate-500">Ciblés</p><p className="text-xl font-bold">{c.total_targeted}</p></Card><Card className="p-3"><p className="text-xs text-slate-500">Pending</p><p className="text-xl font-bold text-indigo-600">{c.pending}</p></Card><Card className="p-3"><p className="text-xs text-slate-500">Envoyés</p><p className="text-xl font-bold text-emerald-600">{c.sent}</p></Card><Card className="p-3"><p className="text-xs text-slate-500">Échecs</p><p className="text-xl font-bold text-rose-600">{c.failed}</p></Card></div>
+    <Card className="p-4"><div className="flex items-center justify-between mb-2"><h2 className="text-lg font-bold">{c.name}</h2><div className="flex gap-1">{isAI && <Badge color="violet"><IconSparkle className="w-3 h-3 inline"/> IA</Badge>}<Badge color={c.status === 'running' ? 'amber' : c.status === 'completed' ? 'emerald' : c.status === 'paused' ? 'rose' : 'slate'}>{c.status}</Badge></div></div></Card>
+    <div className="grid grid-cols-2 gap-2">
+      <Card className="p-3"><p className="text-xs text-slate-500">Cibles</p><p className="text-xl font-bold">{c.total_targeted}</p></Card>
+      <Card className="p-3"><p className="text-xs text-slate-500">Pending</p><p className="text-xl font-bold text-indigo-600">{pending}</p></Card>
+      <Card className="p-3"><p className="text-xs text-slate-500">Envoyés</p><p className="text-xl font-bold text-emerald-600">{c.total_sent}</p></Card>
+      <Card className="p-3"><p className="text-xs text-slate-500">Réponses</p><p className="text-xl font-bold text-emerald-600">{c.replies_count || 0} <span className="text-sm text-slate-500">({c.reply_rate_pct || 0}%)</span></p></Card>
+      <Card className="p-3"><p className="text-xs text-slate-500">Échecs</p><p className="text-xl font-bold text-rose-600">{c.total_failed}</p></Card>
+      <Card className="p-3"><p className="text-xs text-slate-500">Coût IA</p><p className="text-xl font-bold text-violet-600">{fmtCost(c.ai_cost_usd || 0)}</p></Card>
+    </div>
     <Card className="p-4 space-y-2"><p className="font-semibold mb-2">Actions</p>
-      {c.status === 'draft' && <Button onClick={materialize} disabled={busy} className="w-full">{busy ? '...' : '1. Préparer (matérialiser ' + (isAI ? 'sans body' : 'avec body rendu') + ')'}</Button>}
-      {(c.status === 'ready' || c.status === 'running') && isAI && c.pending > 0 && (<Button variant="secondary" onClick={generatePreviews} disabled={busy} className="w-full"><IconSparkle className="w-4 h-4"/>{busy ? 'Génération...' : '2. Générer 30 aperçus IA (~$0.30)'}</Button>)}
-      {(c.status === 'ready' || c.status === 'running') && c.pending > 0 && (<><Button variant="secondary" onClick={() => launch(true)} disabled={busy} className="w-full">Dry-run</Button><Button variant="success" onClick={() => launch(false)} disabled={busy} className="w-full"><IconPlay className="w-4 h-4"/>{busy ? '...' : (isAI ? '3. Envoyer batch (50, JIT génération si manquant)' : 'Envoyer batch (50 max)')}</Button></>)}
-      {c.status === 'completed' && <p className="text-sm text-emerald-700 bg-emerald-50 p-2 rounded">Campagne terminée</p>}
+      {c.status === 'paused' && <Button variant="success" onClick={resume} className="w-full">Reprendre</Button>}
+      {c.status === 'draft' && <Button onClick={materialize} disabled={busy} className="w-full">{busy ? '...' : '1. Préparer'}</Button>}
+      {(c.status === 'ready' || c.status === 'running') && isAI && pending > 0 && (<Button variant="secondary" onClick={generatePreviews} disabled={busy} className="w-full"><IconSparkle className="w-4 h-4"/>{busy ? '...' : '2. Générer 30 aperçus (~$0.30)'}</Button>)}
+      {(c.status === 'ready' || c.status === 'running') && pending > 0 && (<><Button variant="secondary" onClick={() => launch(true, false)} disabled={busy} className="w-full">Dry-run</Button><Button variant="success" onClick={() => launch(false, false)} disabled={busy} className="w-full"><IconPlay className="w-4 h-4"/>{busy ? '...' : 'Envoyer batch (50)'}</Button></>)}
+      {failedCount > 0 && <Button variant="secondary" onClick={() => launch(false, true)} disabled={busy} className="w-full"><IconRefresh className="w-4 h-4"/>Retry {failedCount} échecs</Button>}
       {c.status !== 'archived' && <Button variant="danger" onClick={archive} className="w-full">Archiver</Button>}
     </Card>
-    {c.total_targeted > 0 && (<Card className="p-4"><button onClick={() => setShowRecipients(!showRecipients)} className="w-full flex items-center justify-between"><p className="font-semibold">Recipients ({c.total_targeted})</p><IconChevron className={'w-5 h-5 text-slate-400 transition ' + (showRecipients ? 'rotate-90' : '')}/></button>{showRecipients && (<div className="mt-3 space-y-2 max-h-96 overflow-y-auto">{isAI && previewCount > 0 && <p className="text-xs text-violet-700 bg-violet-50 p-2 rounded">{previewCount} recipients ont un body généré. Les autres seront générés JIT.</p>}{recipients.length === 0 && <p className="text-sm text-slate-500">Chargement...</p>}{recipients.map(r => (<RecipientRow key={r.id} recipient={r} api={api} toast={toast} isAI={isAI} campaignId={c.id} brief={c.campaign_brief} onUpdated={loadRecipients}/>))}</div>)}</Card>)}
+    {c.total_targeted > 0 && (<Card className="p-4"><button onClick={() => setShowR(!showR)} className="w-full flex items-center justify-between"><p className="font-semibold">Recipients ({c.total_targeted})</p><IconChevron className={'w-5 h-5 text-slate-400 transition ' + (showR ? 'rotate-90' : '')}/></button>{showR && (<div className="mt-3 space-y-2 max-h-96 overflow-y-auto">{isAI && previewCount > 0 && <p className="text-xs text-violet-700 bg-violet-50 p-2 rounded">{previewCount} avec body. Reste = JIT.</p>}{recipients.length === 0 && <p className="text-sm text-slate-500">Chargement...</p>}{recipients.map(r => <RecipientRow key={r.id} recipient={r} api={api} toast={toast} isAI={isAI} campaignId={c.id} brief={c.campaign_brief} onUpdated={loadR}/>)}</div>)}</Card>)}
   </div>);
 }
 function RecipientRow({ recipient, api, toast, isAI, campaignId, brief, onUpdated }) {
-  const [lead, setLead] = useState(null);
-  const [busy, setBusy] = useState(false);
-  useEffect(() => { api.rest('/leads?id=eq.' + recipient.lead_id + '&select=company_name,contact_name,phone_e164&limit=1').then(r => { if (r && r[0]) setLead(r[0]); }).catch(() => {}); }, [recipient.lead_id]);
-  const regenerate = async () => { setBusy(true); try { await api.fn('generate-outreach', { lead_id: recipient.lead_id, campaign_id: campaignId, campaign_brief: brief, save_to_recipient_id: recipient.id, force_mode: 'preview' }); toast('Régénéré'); onUpdated(); } catch (e) { toast(e.message, 'error'); } finally { setBusy(false); } };
-  const statusBadge = { pending: 'slate', sent: 'emerald', failed: 'rose', skipped: 'amber', opted_out_at_send: 'rose' }[recipient.status] || 'slate';
-  return (<div className="text-xs bg-slate-50 p-3 rounded-lg space-y-1"><div className="flex items-center justify-between gap-2"><p className="font-medium text-slate-900 truncate">{lead?.company_name || '—'}</p><Badge color={statusBadge}>{recipient.status}</Badge></div>{lead && <p className="text-slate-500">{lead.phone_e164}</p>}{recipient.rendered_body ? <p className="text-slate-700 whitespace-pre-wrap mt-1 bg-white p-2 rounded">{recipient.rendered_body}</p> : <p className="text-slate-400 italic">Body non généré</p>}{recipient.error_message && <p className="text-rose-600 mt-1">{recipient.error_message}</p>}{isAI && recipient.status === 'pending' && (<button onClick={regenerate} disabled={busy} className="text-violet-600 underline text-xs disabled:opacity-50">{busy ? '...' : 'Régénérer ce SMS'}</button>)}</div>);
+  const [lead, setLead] = useState(null); const [busy, setBusy] = useState(false);
+  useEffect(() => { api.rest('/leads?id=eq.' + recipient.lead_id + '&select=company_name,phone_e164&limit=1').then(r => { if (r && r[0]) setLead(r[0]); }).catch(() => {}); }, [recipient.lead_id]);
+  const regen = async () => { setBusy(true); try { await api.fn('generate-outreach', { lead_id: recipient.lead_id, campaign_id: campaignId, campaign_brief: brief, save_to_recipient_id: recipient.id, force_mode: 'preview' }); toast('Régénéré'); onUpdated(); } catch (e) { toast(e.message, 'error'); } finally { setBusy(false); } };
+  const sb = { pending: 'slate', sent: 'emerald', failed: 'rose', skipped: 'amber', opted_out_at_send: 'rose' }[recipient.status] || 'slate';
+  return (<div className="text-xs bg-slate-50 p-3 rounded-lg space-y-1"><div className="flex items-center justify-between gap-2"><p className="font-medium text-slate-900 truncate">{lead?.company_name || '—'}</p><Badge color={sb}>{recipient.status}</Badge></div>{lead && <p className="text-slate-500">{lead.phone_e164}</p>}{recipient.rendered_body ? <p className="text-slate-700 whitespace-pre-wrap mt-1 bg-white p-2 rounded">{recipient.rendered_body}</p> : <p className="text-slate-400 italic">Body non généré</p>}{recipient.error_message && <p className="text-rose-600 mt-1">{recipient.error_message}</p>}{isAI && recipient.status === 'pending' && (<button onClick={regen} disabled={busy} className="text-violet-600 underline disabled:opacity-50">{busy ? '...' : 'Régénérer'}</button>)}</div>);
 }
 
-// =====================================================================
-// SUGGESTIONS IA
-// =====================================================================
 function SuggestionsTab({ api, toast }) {
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [editBody, setEditBody] = useState('');
+  const [items, setItems] = useState([]); const [loading, setLoading] = useState(false); const [editingId, setEditingId] = useState(null); const [editBody, setEditBody] = useState('');
   const load = useCallback(async () => { setLoading(true); try { setItems(await api.rest('/v_pending_suggestions?select=*') || []); } catch (e) { toast(e.message, 'error'); } finally { setLoading(false); } }, [api]);
   useEffect(() => { load(); }, [load]);
-  const act = async (id, action, edited) => {
-    try {
-      const payload = { suggestion_id: id, action, reviewer: 'dashboard' };
-      if (action === 'edit_approve') payload.edited_body = edited;
-      const r = await api.fn('process-suggestion', payload);
-      toast(r.action === 'sent' ? 'Envoyé ✓' : (r.action === 'rejected' ? 'Rejetée' : 'OK'));
-      setEditingId(null); setEditBody(''); load();
-    } catch (e) { toast(e.message, 'error'); }
-  };
+  const act = async (id, action, edited) => { try { const payload = { suggestion_id: id, action, reviewer: 'dashboard' }; if (action === 'edit_approve') payload.edited_body = edited; const r = await api.fn('process-suggestion', payload); toast(r.action === 'sent' ? 'Envoyé' : (r.action === 'rejected' ? 'Rejetée' : 'OK')); setEditingId(null); setEditBody(''); load(); } catch (e) { toast(e.message, 'error'); } };
   return (<div className="space-y-3">
-    {loading && <div className="p-8 text-center text-slate-500">Chargement...</div>}
-    {!loading && items.length === 0 && <Card className="p-8 text-center text-slate-500"><IconSparkle className="w-12 h-12 mx-auto mb-2 text-slate-300"/><p>Aucune suggestion en attente</p><p className="text-xs mt-1">Les nouvelles suggestions IA apparaitront ici</p></Card>}
+    {loading && <Skeleton rows={3} h="h-32"/>}
+    {!loading && items.length === 0 && <Card className="p-8 text-center text-slate-500"><IconSparkle className="w-12 h-12 mx-auto mb-2 text-slate-300"/><p>Aucune suggestion</p></Card>}
     {items.map(s => (<Card key={s.id} className="p-4 space-y-3">
       <div className="flex items-start justify-between gap-2"><div className="flex-1 min-w-0"><p className="font-semibold text-slate-900 truncate">{s.company_name || '—'}</p><p className="text-xs text-slate-500">{s.contact_name || ''} · {s.phone_e164}</p></div><div className="flex flex-col gap-1 items-end">{s.escalate && <Badge color="rose">⚠ Escalade</Badge>}{s.sentiment && <Badge color={sentColor(s.sentiment)}>{s.sentiment}</Badge>}{s.intent && <Badge color="slate">{s.intent}</Badge>}</div></div>
       {s.escalate_reason && <div className="text-xs bg-rose-50 text-rose-700 p-2 rounded">{s.escalate_reason}</div>}
-      <div className="bg-slate-50 p-3 rounded-lg">{editingId === s.id ? (<TextArea value={editBody} onChange={setEditBody} rows={3}/>) : (<p className="text-sm whitespace-pre-wrap">{s.suggested_body || '(pas de réponse suggérée)'}</p>)}</div>
-      {!s.send_reply && <div className="text-xs text-amber-700 bg-amber-50 p-2 rounded">L'IA recommande de ne PAS répondre (send_reply=false)</div>}
+      <div className="bg-slate-50 p-3 rounded-lg">{editingId === s.id ? <TextArea value={editBody} onChange={setEditBody} rows={3}/> : <p className="text-sm whitespace-pre-wrap">{s.suggested_body || '(pas de réponse)'}</p>}</div>
+      {!s.send_reply && <div className="text-xs text-amber-700 bg-amber-50 p-2 rounded">L'IA recommande de NE PAS répondre</div>}
       {s.internal_note && <div className="text-xs text-slate-500 italic">{s.internal_note}</div>}
       <div className="flex gap-2 text-xs text-slate-400 border-t pt-2"><span>{fmtRelative(s.created_at)}</span><span>{fmtCost(s.estimated_cost_usd)}</span><span>{s.latency_ms}ms</span></div>
-      <div className="flex gap-2">{editingId === s.id ? (<><Button variant="secondary" onClick={() => { setEditingId(null); setEditBody(''); }} className="flex-1">Annuler</Button><Button variant="success" onClick={() => act(s.id, 'edit_approve', editBody)} disabled={!editBody} className="flex-1">Envoyer modifié</Button></>) : (<><Button variant="danger" onClick={() => act(s.id, 'reject')} className="flex-1"><IconX className="w-4 h-4"/>Rejeter</Button>{s.suggested_body && <Button variant="secondary" onClick={() => { setEditingId(s.id); setEditBody(s.suggested_body); }}><IconEdit className="w-4 h-4"/></Button>}{s.send_reply && s.suggested_body && <Button variant="success" onClick={() => act(s.id, 'approve')} className="flex-1"><IconCheck className="w-4 h-4"/>Approuver</Button>}</>)}</div>
+      <div className="flex gap-2">{editingId === s.id ? (<><Button variant="secondary" onClick={() => { setEditingId(null); setEditBody(''); }} className="flex-1">Annuler</Button><Button variant="success" onClick={() => act(s.id, 'edit_approve', editBody)} disabled={!editBody} className="flex-1">Envoyer</Button></>) : (<><Button variant="danger" size="sm" onClick={() => act(s.id, 'reject')} className="flex-1"><IconX className="w-4 h-4"/>Rejeter</Button>{s.suggested_body && <Button variant="secondary" size="sm" onClick={() => { setEditingId(s.id); setEditBody(s.suggested_body); }}><IconEdit className="w-4 h-4"/></Button>}{s.send_reply && s.suggested_body && <Button variant="success" size="sm" onClick={() => act(s.id, 'approve')} className="flex-1"><IconCheck className="w-4 h-4"/>Approuver</Button>}</>)}</div>
     </Card>))}
   </div>);
 }
 
-// =====================================================================
-// CONVERSATIONS
-// =====================================================================
 function ConversationsTab({ api, toast }) {
-  const [phone, setPhone] = useState('');
-  const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [reply, setReply] = useState('');
-  const [sending, setSending] = useState(false);
-  const [searched, setSearched] = useState(false);
-  const search = async () => { if (!phone) return; setLoading(true); setSearched(true); try { setMessages(await api.rest('/messages_log?phone_e164=eq.' + encodeURIComponent(phone) + '&order=timestamp.asc&limit=200') || []); } catch (e) { toast(e.message, 'error'); } finally { setLoading(false); } };
+  const [phone, setPhone] = useState(''); const [messages, setMessages] = useState([]); const [suggestions, setSuggestions] = useState([]); const [loading, setLoading] = useState(false); const [reply, setReply] = useState(''); const [sending, setSending] = useState(false); const [searched, setSearched] = useState(false);
+  const search = async () => { if (!phone) return; setLoading(true); setSearched(true); try { const [msgs, sugg] = await Promise.all([api.rest('/messages_log?phone_e164=eq.' + encodeURIComponent(phone) + '&order=timestamp.asc&limit=200'), api.rest('/reply_suggestions?phone_e164=eq.' + encodeURIComponent(phone) + '&select=*&order=created_at.desc&limit=10')]); setMessages(msgs || []); setSuggestions(sugg || []); } catch (e) { toast(e.message, 'error'); } finally { setLoading(false); } };
   const sendReply = async () => { if (!reply || !phone) return; setSending(true); try { await api.fn('send-sms', { phone_e164: phone, body: reply }); setReply(''); await search(); toast('Envoyé'); } catch (e) { toast(e.message, 'error'); } finally { setSending(false); } };
+  const pendingSuggs = suggestions.filter(s => s.status === 'pending');
   return (<div className="space-y-4">
     <Card className="p-4"><div className="flex gap-2"><div className="flex-1"><Input value={phone} onChange={setPhone} placeholder="+15145551234"/></div><Button onClick={search} disabled={loading || !phone}>Chercher</Button></div></Card>
-    {loading && <div className="p-8 text-center text-slate-500">Chargement...</div>}
+    {loading && <Skeleton rows={4} h="h-12"/>}
+    {!loading && pendingSuggs.length > 0 && (<Card className="p-3 bg-violet-50 border-violet-200"><p className="text-xs font-semibold text-violet-700 mb-2 flex items-center gap-1"><IconSparkle className="w-4 h-4"/>Suggestions IA en attente ({pendingSuggs.length})</p>{pendingSuggs.map(s => (<div key={s.id} className="text-xs bg-white p-2 rounded mb-1.5 last:mb-0"><p className="text-slate-700 whitespace-pre-wrap">{s.suggested_body}</p>{s.escalate && <p className="text-rose-600 mt-1">⚠ {s.escalate_reason}</p>}<p className="text-slate-400 mt-1">{fmtRelative(s.created_at)} · voir onglet Sugg.</p></div>))}</Card>)}
     {!loading && messages.length > 0 && (<><div className="space-y-2">{messages.map(m => (<div key={m.id} className={'flex ' + (m.direction === 'outbound' ? 'justify-end' : 'justify-start')}><div className={'max-w-xs px-4 py-2 rounded-2xl ' + (m.direction === 'outbound' ? 'bg-indigo-600 text-white' : 'bg-white border border-slate-200')}><p className="text-sm whitespace-pre-wrap">{m.body}</p><p className={'text-xs mt-1 ' + (m.direction === 'outbound' ? 'text-indigo-200' : 'text-slate-400')}>{fmtDate(m.timestamp)} · {m.status || '—'}</p></div></div>))}</div><Card className="p-3"><div className="flex gap-2"><div className="flex-1"><Input value={reply} onChange={setReply} placeholder="Réponse..."/></div><Button onClick={sendReply} disabled={sending || !reply}><IconSend className="w-4 h-4"/></Button></div></Card></>)}
-    {!loading && searched && phone && messages.length === 0 && <Card className="p-8 text-center text-slate-500">Aucun message pour ce numéro</Card>}
+    {!loading && searched && phone && messages.length === 0 && <Card className="p-8 text-center text-slate-500">Aucun message</Card>}
   </div>);
 }
 
-// =====================================================================
-// PLUS (Opt-outs + Logs)
-// =====================================================================
 function PlusTab({ api, toast }) {
-  const [section, setSection] = useState('optouts');
+  const [section, setSection] = useState('activity');
   return (<div className="space-y-4">
-    <div className="flex gap-2 p-1 bg-slate-100 rounded-xl"><button onClick={() => setSection('optouts')} className={'flex-1 py-2 rounded-lg text-sm font-medium ' + (section === 'optouts' ? 'bg-white shadow' : 'text-slate-600')}>Opt-outs</button><button onClick={() => setSection('logs')} className={'flex-1 py-2 rounded-lg text-sm font-medium ' + (section === 'logs' ? 'bg-white shadow' : 'text-slate-600')}>Logs</button></div>
+    <div className="flex gap-1 p-1 bg-slate-100 rounded-xl text-sm">{[['activity','Activité'],['optouts','Opt-outs'],['errors','Erreurs']].map(([k,l]) => <button key={k} onClick={() => setSection(k)} className={'flex-1 py-2 rounded-lg font-medium ' + (section === k ? 'bg-white shadow' : 'text-slate-600')}>{l}</button>)}</div>
+    {section === 'activity' && <ActivityTimeline api={api} toast={toast}/>}
     {section === 'optouts' && <OptOutsSection api={api} toast={toast}/>}
-    {section === 'logs' && <ActivitySection api={api} toast={toast}/>}
+    {section === 'errors' && <ErrorsSection api={api} toast={toast}/>}
   </div>);
 }
+function ActivityTimeline({ api, toast }) {
+  const [items, setItems] = useState([]); const [loading, setLoading] = useState(false);
+  useEffect(() => { setLoading(true); api.rest('/v_recent_activity?select=*&limit=100').then(d => setItems(d || [])).catch(e => toast(e.message, 'error')).finally(() => setLoading(false)); }, [api]);
+  if (loading) return <Skeleton rows={5} h="h-16"/>;
+  return (<div className="space-y-2">{items.length === 0 && <Card className="p-8 text-center text-slate-500">Aucune activité</Card>}{items.map(a => { const c = a.source.startsWith('message_in') ? 'emerald' : a.source.startsWith('message_out') ? 'indigo' : a.source === 'ai_call' ? 'violet' : 'slate'; return (<Card key={a.source + a.id} className="p-3"><div className="flex items-center justify-between gap-2"><div className="flex items-center gap-2"><Badge color={c}>{a.source.replace('message_', '')}</Badge><p className="font-medium text-sm text-slate-900">{a.actor || '—'}</p></div><Badge color={a.status === 'ok' || a.status === 'sent' || a.status === 'received' ? 'emerald' : a.status === 'failed' || a.status === 'error' ? 'rose' : 'slate'}>{a.status || '—'}</Badge></div><p className="text-sm text-slate-600 mt-1 truncate">{a.action || '—'} · {a.details || ''}</p><p className="text-xs text-slate-400 mt-0.5">{fmtRelative(a.ts)}</p></Card>); })}</div>);
+}
 function OptOutsSection({ api, toast }) {
-  const [list, setList] = useState([]);
-  const [phone, setPhone] = useState('');
-  const [reason, setReason] = useState('manual');
-  const [busy, setBusy] = useState(false);
+  const [list, setList] = useState([]); const [phone, setPhone] = useState(''); const [reason, setReason] = useState('manual'); const [busy, setBusy] = useState(false);
   const load = useCallback(async () => { try { setList(await api.rest('/opt_outs?select=*&order=opted_out_at.desc&limit=200') || []); } catch (e) { toast(e.message, 'error'); } }, [api]);
   useEffect(() => { load(); }, [load]);
   const add = async () => { if (!phone) return; setBusy(true); try { await api.rpc('add_manual_opt_out', { p_phone: phone, p_reason: reason }); setPhone(''); toast('Ajouté'); load(); } catch (e) { toast(e.message, 'error'); } finally { setBusy(false); } };
   const remove = async p => { if (!confirm('Retirer ' + p + '?')) return; try { await api.rpc('remove_opt_out', { p_phone: p }); toast('Retiré'); load(); } catch (e) { toast(e.message, 'error'); } };
   return (<div className="space-y-4">
-    <Card className="p-4 space-y-3"><p className="font-semibold text-slate-900">Ajouter manuellement</p><Input value={phone} onChange={setPhone} placeholder="+15145551234"/><Input value={reason} onChange={setReason} placeholder="Raison"/><Button onClick={add} disabled={busy || !phone} className="w-full">Ajouter</Button></Card>
-    <Card className="p-4"><p className="font-semibold text-slate-900 mb-3">Liste ({list.length})</p><div className="space-y-2 max-h-96 overflow-y-auto">{list.map(o => (<div key={o.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg"><div className="flex-1 min-w-0"><p className="font-mono text-sm text-slate-900">{o.phone_e164}</p><p className="text-xs text-slate-500">{o.reason || '—'} · {fmtRelative(o.opted_out_at)}</p></div><button onClick={() => remove(o.phone_e164)} className="p-2 text-rose-600 hover:bg-rose-50 rounded-lg"><IconTrash className="w-4 h-4"/></button></div>))}</div></Card>
+    <Card className="p-4 space-y-3"><p className="font-semibold">Ajouter</p><Input value={phone} onChange={setPhone} placeholder="+15145551234"/><Input value={reason} onChange={setReason} placeholder="Raison"/><Button onClick={add} disabled={busy || !phone} className="w-full">Ajouter</Button></Card>
+    <Card className="p-4"><p className="font-semibold mb-3">Liste ({list.length})</p><div className="space-y-2 max-h-96 overflow-y-auto">{list.map(o => (<div key={o.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg"><div className="flex-1 min-w-0"><p className="font-mono text-sm">{o.phone_e164}</p><p className="text-xs text-slate-500">{o.reason || '—'} · {fmtRelative(o.opted_out_at)}</p></div><button onClick={() => remove(o.phone_e164)} className="p-2 text-rose-600 hover:bg-rose-50 rounded-lg"><IconTrash className="w-4 h-4"/></button></div>))}</div></Card>
   </div>);
 }
-function ActivitySection({ api, toast }) {
-  const [items, setItems] = useState([]);
-  useEffect(() => { api.rest('/agent_activity?select=*&order=timestamp.desc.nullslast,created_at.desc&limit=100').then(d => setItems(d || [])).catch(e => toast(e.message, 'error')); }, [api]);
-  return (<div className="space-y-2">{items.length === 0 && <Card className="p-8 text-center text-slate-500">Aucune activité</Card>}{items.map(a => (<Card key={a.id} className="p-3"><div className="flex items-center justify-between"><p className="font-medium text-sm text-slate-900">{a.agent_name || 'system'}</p><Badge color={a.status === 'ok' ? 'emerald' : a.status === 'failed' ? 'rose' : 'amber'}>{a.status || '—'}</Badge></div><p className="text-sm text-slate-600 mt-0.5">{a.action || '—'}{a.records_processed ? ' · ' + a.records_processed : ''}</p><p className="text-xs text-slate-400 mt-1">{fmtRelative(a.timestamp || a.created_at)}</p></Card>))}</div>);
+function ErrorsSection({ api, toast }) {
+  const [errs, setErrs] = useState([]); const [loading, setLoading] = useState(false);
+  useEffect(() => { setLoading(true); api.rest('/v_twilio_errors_summary?select=*').then(d => setErrs(d || [])).catch(e => toast(e.message, 'error')).finally(() => setLoading(false)); }, [api]);
+  if (loading) return <Skeleton rows={3}/>;
+  return (<div className="space-y-2">{errs.length === 0 && <Card className="p-8 text-center text-slate-500">Aucune erreur enregistrée</Card>}{errs.map(e => (<Card key={e.error_code} className="p-4"><div className="flex items-start justify-between"><div className="flex-1"><p className="font-mono text-sm font-bold text-rose-600">{e.error_code}</p><p className="text-sm text-slate-700 mt-0.5">{e.description || 'Code Twilio inconnu'}</p>{e.auto_disabled && <Badge color="amber">Auto-disable SMS</Badge>}</div><div className="text-right"><p className="text-xl font-bold text-rose-600">{e.occurrences}</p><p className="text-xs text-slate-500">{e.unique_phones} numéros</p><p className="text-xs text-slate-400 mt-1">{fmtRelative(e.last_seen)}</p></div></div></Card>))}</div>);
 }
 
-// =====================================================================
-// SETTINGS
-// =====================================================================
 function SettingsPage({ api, toast, onBack }) {
-  const [section, setSection] = useState('general');
-  const [settings, setSettings] = useState({});
-  const load = useCallback(async () => { try { const r = await api.rest('/app_settings?select=*&order=key.asc'); const map = {}; (r || []).forEach(s => { map[s.key] = s; }); setSettings(map); } catch (e) { toast(e.message, 'error'); } }, [api]);
+  const [section, setSection] = useState('general'); const [settings, setSettings] = useState({}); const [prompts, setPrompts] = useState([]);
+  const load = useCallback(async () => { try { const [r, p] = await Promise.all([api.rest('/app_settings?select=*&order=key.asc'), api.rest('/ai_prompts?select=*&order=purpose.asc')]); const map = {}; (r || []).forEach(s => { map[s.key] = s; }); setSettings(map); setPrompts(p || []); } catch (e) { toast(e.message, 'error'); } }, [api]);
   useEffect(() => { load(); }, [load]);
   const save = async (key, value) => { try { await api.rpc('set_setting', { p_key: key, p_value: value }); toast('Sauvegardé'); load(); } catch (e) { toast(e.message, 'error'); } };
   const SettingItem = ({ k, label, hint, type, parser }) => {
-    const cur = settings[k];
-    const [v, setV] = useState('');
+    const cur = settings[k]; const [v, setV] = useState('');
     useEffect(() => { if (cur) setV(typeof cur.value === 'string' ? cur.value : JSON.stringify(cur.value)); }, [cur]);
     if (!cur) return null;
-    return (<Card className="p-4 space-y-2"><div><p className="font-semibold text-sm">{label}</p><p className="text-xs text-slate-500">{hint || cur.description}</p></div><div className="flex gap-2"><input type={type || 'text'} value={v} onChange={e => setV(e.target.value)} className="flex-1 px-3 py-2 rounded-lg border border-slate-300 outline-none text-sm"/><Button onClick={() => save(k, parser ? parser(v) : v)}>OK</Button></div></Card>);
+    return (<Card className="p-4 space-y-2"><div><p className="font-semibold text-sm">{label}</p><p className="text-xs text-slate-500">{hint || cur.description}</p></div><div className="flex gap-2"><input type={type || 'text'} value={v} onChange={e => setV(e.target.value)} className="flex-1 px-3 py-2 rounded-lg border border-slate-300 outline-none text-sm"/><Button size="sm" onClick={() => save(k, parser ? parser(v) : v)}>OK</Button></div></Card>);
   };
   const aiEnabled = settings.ai_enabled?.value === true;
   const aiMode = typeof settings.ai_mode?.value === 'string' ? settings.ai_mode.value : 'shadow';
   return (<div className="space-y-4">
     <button onClick={onBack} className="flex items-center gap-2 text-sm text-slate-600"><IconArrowLeft className="w-4 h-4"/>Retour</button>
     <h2 className="text-xl font-bold">Réglages</h2>
-    <div className="flex gap-2 p-1 bg-slate-100 rounded-xl"><button onClick={() => setSection('general')} className={'flex-1 py-2 rounded-lg text-sm font-medium ' + (section === 'general' ? 'bg-white shadow' : 'text-slate-600')}>Envoi</button><button onClick={() => setSection('ai')} className={'flex-1 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-1 ' + (section === 'ai' ? 'bg-white shadow text-violet-700' : 'text-slate-600')}><IconSparkle className="w-4 h-4"/>IA</button></div>
-    {section === 'general' && (<><SettingItem k="quiet_hours_start" label="Début fenêtre d'envoi" hint="Heure 0-23, format Montréal" type="number" parser={v => parseInt(v, 10)}/><SettingItem k="quiet_hours_end" label="Fin fenêtre d'envoi" hint="Heure 0-23" type="number" parser={v => parseInt(v, 10)}/><SettingItem k="quiet_hours_tz" label="Fuseau horaire" hint="Ex: America/Montreal" parser={v => v}/><SettingItem k="daily_cap_per_number" label="Plafond quotidien" hint="Max SMS par numéro / 24h" type="number" parser={v => parseInt(v, 10)}/><SettingItem k="send_throttle_ms" label="Délai entre envois (ms)" hint=">=1000 pour Twilio long-code" type="number" parser={v => parseInt(v, 10)}/></>)}
-    {section === 'ai' && (<><Card className="p-4 space-y-3"><Toggle checked={aiEnabled} onChange={v => save('ai_enabled', v)} label="IA activée" helper="Master switch — désactivé = aucun appel API"/></Card><Card className="p-4 space-y-3"><p className="font-semibold text-sm">Mode IA</p><div className="flex gap-2">{['shadow', 'auto'].map(m => (<button key={m} onClick={() => save('ai_mode', m)} className={'flex-1 py-2 rounded-lg text-sm font-medium border ' + (aiMode === m ? 'bg-violet-100 border-violet-300 text-violet-700' : 'bg-white border-slate-300 text-slate-600')}>{m === 'shadow' ? 'Shadow (review)' : 'Auto (envoie direct)'}</button>))}</div><p className="text-xs text-slate-500">Shadow = suggestions stockées, action humaine requise. Auto = envoie automatiquement.</p></Card><SettingItem k="ai_max_exchanges_per_lead" label="Max échanges IA / lead" hint="Après ce nombre, escalation forcée" type="number" parser={v => parseInt(v, 10)}/><SettingItem k="ai_skip_if_replied_recently_minutes" label="Anti double-réponse (min)" hint="Skip génération si suggestion existe < N min" type="number" parser={v => parseInt(v, 10)}/><SettingItem k="ai_outreach_model" label="Modèle outreach" hint="claude-sonnet-4-6 ou claude-haiku-4-5" parser={v => v}/><SettingItem k="ai_reply_model" label="Modèle réponses" hint="Sonnet recommandé pour la nuance" parser={v => v}/></>)}
+    <div className="flex gap-1 p-1 bg-slate-100 rounded-xl text-sm">{[['general','Envoi'],['ai','IA'],['prompts','Prompts']].map(([k,l]) => <button key={k} onClick={() => setSection(k)} className={'flex-1 py-2 rounded-lg font-medium flex items-center justify-center gap-1 ' + (section === k ? 'bg-white shadow' : 'text-slate-600')}>{k === 'ai' || k === 'prompts' ? <IconSparkle className="w-4 h-4"/> : null}{l}</button>)}</div>
+    {section === 'general' && (<><SettingItem k="quiet_hours_start" label="Début envoi" hint="0-23, fuseau Montréal" type="number" parser={v => parseInt(v, 10)}/><SettingItem k="quiet_hours_end" label="Fin envoi" hint="0-23" type="number" parser={v => parseInt(v, 10)}/><SettingItem k="quiet_hours_tz" label="Fuseau" parser={v => v}/><SettingItem k="daily_cap_per_number" label="Plafond / 24h" type="number" parser={v => parseInt(v, 10)}/><SettingItem k="send_throttle_ms" label="Délai envois (ms)" type="number" parser={v => parseInt(v, 10)}/></>)}
+    {section === 'ai' && (<><Card className="p-4"><Toggle checked={aiEnabled} onChange={v => save('ai_enabled', v)} label="IA activée" helper="Master switch"/></Card><Card className="p-4 space-y-3"><p className="font-semibold text-sm">Mode</p><div className="flex gap-2">{['shadow', 'auto'].map(m => (<button key={m} onClick={() => save('ai_mode', m)} className={'flex-1 py-2 rounded-lg text-sm font-medium border ' + (aiMode === m ? 'bg-violet-100 border-violet-300 text-violet-700' : 'bg-white border-slate-300')}>{m === 'shadow' ? 'Shadow (review)' : 'Auto'}</button>))}</div></Card><SettingItem k="ai_max_exchanges_per_lead" label="Max échanges/lead" type="number" parser={v => parseInt(v, 10)}/><SettingItem k="ai_skip_if_replied_recently_minutes" label="Anti double-rép (min)" type="number" parser={v => parseInt(v, 10)}/><SettingItem k="ai_outreach_model" label="Modèle outreach" parser={v => v}/><SettingItem k="ai_reply_model" label="Modèle réponses" parser={v => v}/></>)}
+    {section === 'prompts' && <PromptsEditor prompts={prompts} api={api} toast={toast} onUpdated={load}/>}
+  </div>);
+}
+function PromptsEditor({ prompts, api, toast, onUpdated }) {
+  const [editing, setEditing] = useState(null);
+  if (editing) {
+    return <PromptEditForm prompt={editing} api={api} toast={toast} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); onUpdated(); }}/>;
+  }
+  return (<div className="space-y-2">{prompts.length === 0 && <Card className="p-8 text-center text-slate-500">Aucun prompt</Card>}{prompts.map(p => (<Card key={p.id} className="p-4"><button onClick={() => setEditing(p)} className="w-full text-left"><div className="flex items-center justify-between mb-1"><p className="font-semibold">{p.name}</p><Badge color={p.purpose === 'outreach' ? 'violet' : 'indigo'}>{p.purpose}</Badge></div><p className="text-xs text-slate-500">{p.model} · temp={p.temperature} · max_tokens={p.max_tokens}</p><p className="text-xs text-slate-400 mt-1">System: {p.system_prompt.length} chars · v{p.version}</p>{p.notes && <p className="text-xs text-slate-500 italic mt-1">{p.notes}</p>}</button></Card>))}</div>);
+}
+function PromptEditForm({ prompt, api, toast, onClose, onSaved }) {
+  const [form, setForm] = useState({ system_prompt: prompt.system_prompt, user_prompt_template: prompt.user_prompt_template, temperature: prompt.temperature, max_tokens: prompt.max_tokens, model: prompt.model, notes: prompt.notes });
+  const [busy, setBusy] = useState(false);
+  const save = async () => { setBusy(true); try { await api.rpc('update_prompt_text', { p_prompt_id: prompt.id, p_system_prompt: form.system_prompt, p_user_prompt_template: form.user_prompt_template, p_temperature: parseFloat(form.temperature), p_max_tokens: parseInt(form.max_tokens, 10), p_model: form.model, p_notes: form.notes }); toast('Prompt sauvegardé'); onSaved(); } catch (e) { toast(e.message, 'error'); } finally { setBusy(false); } };
+  return (<div className="space-y-3">
+    <button onClick={onClose} className="flex items-center gap-2 text-sm text-slate-600"><IconArrowLeft className="w-4 h-4"/>Retour aux prompts</button>
+    <Card className="p-4"><h3 className="font-bold mb-1">{prompt.name}</h3><p className="text-xs text-slate-500">{prompt.purpose} · v{prompt.version}</p></Card>
+    <Input label="Modèle" value={form.model} onChange={v => setForm({...form, model: v})}/>
+    <div className="grid grid-cols-2 gap-2"><Input label="Temperature" type="number" value={form.temperature} onChange={v => setForm({...form, temperature: v})}/><Input label="Max tokens" type="number" value={form.max_tokens} onChange={v => setForm({...form, max_tokens: v})}/></div>
+    <TextArea label="System prompt" value={form.system_prompt} onChange={v => setForm({...form, system_prompt: v})} rows={20} mono/>
+    <TextArea label="User prompt template" value={form.user_prompt_template} onChange={v => setForm({...form, user_prompt_template: v})} rows={10} mono/>
+    <TextArea label="Notes" value={form.notes} onChange={v => setForm({...form, notes: v})} rows={2}/>
+    <div className="flex gap-2 pt-2"><Button variant="secondary" onClick={onClose} className="flex-1">Annuler</Button><Button onClick={save} disabled={busy} className="flex-1">{busy ? '...' : 'Sauvegarder'}</Button></div>
   </div>);
 }
 
-// =====================================================================
-// NAV + APP
-// =====================================================================
-function BottomNav({ tab, onChange, suggestionCount }) {
-  const tabs = [{ id: 'dashboard', label: 'Accueil', Icon: IconHome }, { id: 'leads', label: 'Leads', Icon: IconUsers }, { id: 'campaigns', label: 'Campagnes', Icon: IconMegaphone }, { id: 'conversations', label: 'Convo', Icon: IconChat }, { id: 'suggestions', label: 'Sugg.', Icon: IconSparkle, badge: suggestionCount }, { id: 'plus', label: 'Plus', Icon: IconMore }];
+function BottomNav({ tab, onChange, suggCount }) {
+  const tabs = [{ id: 'dashboard', label: 'Accueil', Icon: IconHome }, { id: 'leads', label: 'Leads', Icon: IconUsers }, { id: 'campaigns', label: 'Camp.', Icon: IconMegaphone }, { id: 'conversations', label: 'Convo', Icon: IconChat }, { id: 'suggestions', label: 'Sugg.', Icon: IconSparkle, badge: suggCount }, { id: 'plus', label: 'Plus', Icon: IconMore }];
   return (<nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-2 py-2 z-30" style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}><div className="max-w-4xl mx-auto flex justify-around">{tabs.map(t => (<button key={t.id} onClick={() => onChange(t.id)} className={'relative flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg transition ' + (tab === t.id ? 'text-indigo-600' : 'text-slate-500')}><t.Icon className="w-5 h-5"/>{t.badge > 0 && <span className="absolute -top-1 right-0 bg-rose-600 text-white text-[10px] font-bold rounded-full min-w-4 h-4 px-1 flex items-center justify-center">{t.badge}</span>}<span className="text-xs font-medium">{t.label}</span></button>))}</div></nav>);
 }
+
 function App() {
   const [config, setConfig] = useState(() => { try { const s = sessionStorage.getItem(STORAGE_KEY); return s ? JSON.parse(s) : null; } catch { return null; } });
   const [tab, setTab] = useState('dashboard');
   const [showSettings, setShowSettings] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [detailLead, setDetailLead] = useState(null);
   const [suggCount, setSuggCount] = useState(0);
   const [t, showToast, clearToast] = useToast();
   const api = useMemo(() => config ? makeApi(config.url, config.key) : null, [config]);
-  const refreshSuggCount = useCallback(async () => { if (!api) return; try { const r = await api.rest('/reply_suggestions?select=id&status=eq.pending'); setSuggCount((r || []).length); } catch {} }, [api]);
-  useEffect(() => { if (api) { refreshSuggCount(); const i = setInterval(refreshSuggCount, 30000); return () => clearInterval(i); } }, [api, refreshSuggCount]);
+  const refreshSugg = useCallback(async () => { if (!api) return; try { const r = await api.rest('/reply_suggestions?select=id&status=eq.pending'); setSuggCount((r || []).length); } catch {} }, [api]);
+  useEffect(() => { if (api) { refreshSugg(); const i = setInterval(refreshSugg, 30000); return () => clearInterval(i); } }, [api, refreshSugg]);
+  // Cmd+K shortcut
+  useEffect(() => {
+    if (!api) return;
+    const handler = e => { if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); setShowSearch(true); } };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [api]);
   const onConnect = cfg => { try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(cfg)); } catch {} setConfig(cfg); };
   const onDisconnect = () => { try { sessionStorage.removeItem(STORAGE_KEY); } catch {} setConfig(null); };
   if (!config) return <><Login onConnect={onConnect}/><Toast {...t} onDone={clearToast}/></>;
   return (<div className="min-h-screen pb-24">
     <Toast {...t} onDone={clearToast}/>
-    <header className="bg-white border-b border-slate-200 px-4 py-3 sticky top-0 z-20"><div className="max-w-4xl mx-auto flex items-center justify-between"><div className="flex items-center gap-2"><div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white"><IconChat className="w-4 h-4"/></div><h1 className="font-bold text-slate-900">SMS Dashboard</h1></div><div className="flex items-center gap-1"><button onClick={() => setShowSettings(true)} className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg"><IconSettings className="w-5 h-5"/></button><button onClick={onDisconnect} className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg"><IconLogOut className="w-5 h-5"/></button></div></div></header>
-    <main className="max-w-4xl mx-auto p-4">{showSettings ? <SettingsPage api={api} toast={showToast} onBack={() => setShowSettings(false)}/> : (<>{tab === 'dashboard' && <Dashboard api={api} toast={showToast}/>}{tab === 'leads' && <LeadsTab api={api} toast={showToast}/>}{tab === 'campaigns' && <CampaignsTab api={api} toast={showToast}/>}{tab === 'conversations' && <ConversationsTab api={api} toast={showToast}/>}{tab === 'suggestions' && <SuggestionsTab api={api} toast={showToast}/>}{tab === 'plus' && <PlusTab api={api} toast={showToast}/>}</>)}</main>
-    {!showSettings && <BottomNav tab={tab} onChange={setTab} suggestionCount={suggCount}/>}
+    <header className="bg-white border-b border-slate-200 px-4 py-3 sticky top-0 z-20"><div className="max-w-4xl mx-auto flex items-center justify-between"><div className="flex items-center gap-2"><div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white"><IconChat className="w-4 h-4"/></div><h1 className="font-bold text-slate-900">SMS Dashboard</h1></div><div className="flex items-center gap-1"><button onClick={() => setShowSearch(true)} className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg" title="Recherche (⌘K)"><IconSearch className="w-5 h-5"/></button><button onClick={() => setShowSettings(true)} className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg"><IconSettings className="w-5 h-5"/></button><button onClick={onDisconnect} className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg"><IconLogOut className="w-5 h-5"/></button></div></div></header>
+    <main className="max-w-4xl mx-auto p-4">{showSettings ? <SettingsPage api={api} toast={showToast} onBack={() => setShowSettings(false)}/> : (<>{tab === 'dashboard' && <Dashboard api={api} toast={showToast} openLead={setDetailLead}/>}{tab === 'leads' && <LeadsTab api={api} toast={showToast} openLead={setDetailLead}/>}{tab === 'campaigns' && <CampaignsTab api={api} toast={showToast}/>}{tab === 'conversations' && <ConversationsTab api={api} toast={showToast}/>}{tab === 'suggestions' && <SuggestionsTab api={api} toast={showToast}/>}{tab === 'plus' && <PlusTab api={api} toast={showToast}/>}</>)}</main>
+    {!showSettings && <BottomNav tab={tab} onChange={setTab} suggCount={suggCount}/>}
+    <SearchModal open={showSearch} onClose={() => setShowSearch(false)} api={api} toast={showToast} onSelectLead={setDetailLead}/>
+    <LeadDetailModal open={!!detailLead} lead={detailLead} onClose={() => setDetailLead(null)} api={api} toast={showToast}/>
   </div>);
 }
 ReactDOM.createRoot(document.getElementById('root')).render(<App />);
