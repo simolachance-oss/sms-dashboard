@@ -479,7 +479,7 @@ function ConversationThread({ phone, api, toast, openLead, onBack }) {
     setSending(true);
     const body = reply;
     setReply('');
-    try { await api.fn('send-sms', { phone_e164: phone, body }); await load(true); toast('Envoyé'); }
+    try { await api.fn('send-sms', { phone_e164: phone, body, bypass_daily_cap: true }); await load(true); toast('Envoyé'); }
     catch (e) { setReply(body); toast(e.message, 'error'); }
     finally { setSending(false); }
   };
