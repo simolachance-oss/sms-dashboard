@@ -396,20 +396,25 @@ function SuggestionsTab({ api, toast }) {
 
 // ============ NEW MESSENGER-STYLE CONVERSATIONS ============
 function ConversationsTab({ api, toast, openLead }) {
+  const PAGE = 50;
   const [search, setSearch] = useState('');
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const [selectedPhone, setSelectedPhone] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      let path = '/v_conversations?select=*&limit=100';
+      let path = '/v_conversations?select=*&limit=' + (PAGE + 1);
       if (search) {
         if (search.startsWith('+') || /^\d/.test(search)) path += '&phone_e164=ilike.*' + encodeURIComponent(search) + '*';
         else path += '&display_name=ilike.*' + encodeURIComponent(search) + '*';
       }
-      setConversations(await api.rest(path) || []);
+      const r = await api.rest(path) || [];
+      setConversations(r.slice(0, PAGE));
+      setHasMore(r.length > PAGE);
     } catch (e) { toast(e.message, 'error'); } finally { setLoading(false); }
   }, [api, search]);
 
@@ -417,6 +422,23 @@ function ConversationsTab({ api, toast, openLead }) {
     const t = setTimeout(load, search ? 250 : 0);
     return () => clearTimeout(t);
   }, [load]);
+
+  const loadMore = async () => {
+    if (loadingMore || conversations.length === 0) return;
+    setLoadingMore(true);
+    try {
+      const oldestTs = conversations[conversations.length - 1].last_ts;
+      let path = '/v_conversations?select=*&last_ts=lt.' + encodeURIComponent(oldestTs) + '&limit=' + (PAGE + 1);
+      if (search) {
+        if (search.startsWith('+') || /^\d/.test(search)) path += '&phone_e164=ilike.*' + encodeURIComponent(search) + '*';
+        else path += '&display_name=ilike.*' + encodeURIComponent(search) + '*';
+      }
+      const r = await api.rest(path) || [];
+      setConversations(prev => [...prev, ...r.slice(0, PAGE)]);
+      setHasMore(r.length > PAGE);
+    } catch (e) { toast(e.message, 'error'); }
+    finally { setLoadingMore(false); }
+  };
 
   if (selectedPhone) {
     return <ConversationThread phone={selectedPhone} api={api} toast={toast} openLead={openLead} onBack={() => { setSelectedPhone(null); load(); }}/>;
@@ -434,14 +456,18 @@ function ConversationsTab({ api, toast, openLead }) {
       const avatarColor = isUnread ? 'bg-emerald-500' : (c.priority_tier && c.priority_tier.startsWith('A') ? 'bg-rose-500' : c.priority_tier && c.priority_tier.startsWith('B') ? 'bg-amber-500' : 'bg-indigo-500');
       return (<Card key={c.phone_e164} className="overflow-hidden"><button onClick={() => setSelectedPhone(c.phone_e164)} className="w-full text-left p-3 flex items-center gap-3 hover:bg-slate-50 active:bg-slate-100 transition"><div className={'w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0 ' + avatarColor}>{initials}</div><div className="flex-1 min-w-0"><div className="flex items-center justify-between gap-2 mb-0.5"><p className={'truncate text-slate-900 ' + (isUnread ? 'font-bold' : 'font-semibold')}>{c.display_name}</p><span className={'text-xs shrink-0 ' + (isUnread ? 'text-emerald-600 font-semibold' : 'text-slate-500')}>{fmtRelative(c.last_ts)}</span></div><div className="flex items-center justify-between gap-2"><p className={'text-sm truncate ' + (isUnread ? 'text-slate-900 font-medium' : 'text-slate-500')}>{c.last_direction === 'outbound' && <span className="text-slate-400">Vous: </span>}{c.last_body || '(message vide)'}</p>{isUnread && <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"/>}</div>{(c.priority_tier || c.pipeline_stage) && (<div className="flex gap-1 mt-1.5">{c.priority_tier && <Badge color={tierColor(c.priority_tier)}>{c.priority_tier.split(' - ')[0]}</Badge>}{c.pipeline_stage && <Badge color="slate">{c.pipeline_stage}</Badge>}{c.reply_status === 'opt-out' && <Badge color="rose">Opt-out</Badge>}</div>)}</div></button></Card>);
     })}</div>
+    {hasMore && !loading && (<div className="text-center pt-2"><Button variant="secondary" size="sm" onClick={loadMore} disabled={loadingMore}>{loadingMore ? '...' : 'Charger plus'}</Button></div>)}
   </div>);
 }
 
 function ConversationThread({ phone, api, toast, openLead, onBack }) {
+  const PAGE = 100;
   const [messages, setMessages] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
   const [lead, setLead] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [hasMoreOlder, setHasMoreOlder] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
   const [reply, setReply] = useState('');
   const [sending, setSending] = useState(false);
   const scrollRef = useRef(null);
@@ -451,15 +477,46 @@ function ConversationThread({ phone, api, toast, openLead, onBack }) {
     if (!silent) setLoading(true);
     try {
       const [msgs, sugg, leads] = await Promise.all([
-        api.rest('/messages_log?phone_e164=eq.' + encodeURIComponent(phone) + '&order=timestamp.asc&limit=200'),
+        api.rest('/messages_log?phone_e164=eq.' + encodeURIComponent(phone) + '&order=timestamp.desc&limit=' + (PAGE + 1)),
         api.rest('/reply_suggestions?phone_e164=eq.' + encodeURIComponent(phone) + '&select=*&order=created_at.desc&limit=10'),
         api.rest('/leads?phone_e164=eq.' + encodeURIComponent(phone) + '&select=id,company_name,contact_name,priority_tier,pipeline_stage,reply_status&order=created_at.desc&limit=1'),
       ]);
-      setMessages(msgs || []);
+      const fresh = (msgs || []).slice(0, PAGE).reverse();
+      const more = (msgs || []).length > PAGE;
+      // Merge with already-loaded older pages on silent polls so the user doesn't lose context.
+      setMessages(prev => {
+        if (!silent || prev.length === 0) return fresh;
+        const freshIds = new Set(fresh.map(m => m.id));
+        const olderKept = prev.filter(m => !freshIds.has(m.id) && new Date(m.timestamp) < new Date(fresh[0]?.timestamp || 0));
+        return [...olderKept, ...fresh];
+      });
+      if (!silent) setHasMoreOlder(more);
       setSuggestions(sugg || []);
       setLead((leads && leads[0]) || null);
     } catch (e) { if (!silent) toast(e.message, 'error'); } finally { setLoading(false); }
   }, [phone, api, toast]);
+
+  const loadOlder = async () => {
+    if (loadingOlder || messages.length === 0) return;
+    setLoadingOlder(true);
+    try {
+      const oldestTs = messages[0].timestamp;
+      const older = await api.rest(
+        '/messages_log?phone_e164=eq.' + encodeURIComponent(phone) +
+        '&timestamp=lt.' + encodeURIComponent(oldestTs) +
+        '&order=timestamp.desc&limit=' + (PAGE + 1)
+      );
+      const fetched = (older || []).slice(0, PAGE).reverse();
+      setHasMoreOlder((older || []).length > PAGE);
+      // Preserve scroll offset: snapshot height before prepending so the user stays on the same message.
+      const el = scrollRef.current;
+      const prevHeight = el?.scrollHeight ?? 0;
+      const prevTop = el?.scrollTop ?? 0;
+      setMessages(prev => [...fetched, ...prev]);
+      requestAnimationFrame(() => { if (el) el.scrollTop = prevTop + (el.scrollHeight - prevHeight); });
+    } catch (e) { toast(e.message, 'error'); }
+    finally { setLoadingOlder(false); }
+  };
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { const i = setInterval(() => load(true), 15000); return () => clearInterval(i); }, [load]);
@@ -496,6 +553,7 @@ function ConversationThread({ phone, api, toast, openLead, onBack }) {
     <div ref={scrollRef} className="flex-1 overflow-y-auto py-4 space-y-1 scrollbar-thin">
       {loading && <div className="py-4"><Skeleton rows={3} h="h-12"/></div>}
       {!loading && messages.length === 0 && (<div className="text-center text-slate-500 py-12"><IconChat className="w-12 h-12 mx-auto mb-2 text-slate-300"/><p className="text-sm">Aucun message</p></div>)}
+      {!loading && hasMoreOlder && (<div className="text-center pb-2"><button onClick={loadOlder} disabled={loadingOlder} className="text-xs text-indigo-600 hover:underline disabled:opacity-50">{loadingOlder ? 'Chargement...' : '↑ Charger les anciens'}</button></div>)}
       {messages.map((m, i) => {
         const prev = messages[i - 1];
         const showDate = !prev || (new Date(m.timestamp).getTime() - new Date(prev.timestamp).getTime()) > 5 * 60 * 1000;
@@ -521,21 +579,60 @@ function PlusTab({ api, toast, openLead }) {
   </div>);
 }
 function ActivityTimeline({ api, toast, openLead }) {
-  const [items, setItems] = useState([]); const [loading, setLoading] = useState(false);
-  useEffect(() => { setLoading(true); api.rest('/v_recent_activity?select=*&limit=100').then(d => setItems(d || [])).catch(e => toast(e.message, 'error')).finally(() => setLoading(false)); }, [api]);
+  const PAGE = 100;
+  const [items, setItems] = useState([]); const [loading, setLoading] = useState(false); const [loadingMore, setLoadingMore] = useState(false); const [hasMore, setHasMore] = useState(false);
+  useEffect(() => {
+    setLoading(true);
+    api.rest('/v_recent_activity?select=*&limit=' + (PAGE + 1))
+      .then(d => { const arr = d || []; setItems(arr.slice(0, PAGE)); setHasMore(arr.length > PAGE); })
+      .catch(e => toast(e.message, 'error'))
+      .finally(() => setLoading(false));
+  }, [api]);
+  const loadMore = async () => {
+    if (loadingMore || items.length === 0) return;
+    setLoadingMore(true);
+    try {
+      const oldestTs = items[items.length - 1].ts;
+      const more = await api.rest('/v_recent_activity?select=*&ts=lt.' + encodeURIComponent(oldestTs) + '&limit=' + (PAGE + 1));
+      const arr = more || [];
+      setItems(prev => [...prev, ...arr.slice(0, PAGE)]);
+      setHasMore(arr.length > PAGE);
+    } catch (e) { toast(e.message, 'error'); }
+    finally { setLoadingMore(false); }
+  };
   if (loading) return <Skeleton rows={5} h="h-16"/>;
   const renderInner = a => { const c = a.source.startsWith('message_in') ? 'emerald' : a.source.startsWith('message_out') ? 'indigo' : a.source === 'ai_call' ? 'violet' : 'slate'; return (<><div className="flex items-center justify-between gap-2"><div className="flex items-center gap-2 min-w-0"><Badge color={c}>{a.source.replace('message_', '')}</Badge><p className="font-medium text-sm text-slate-900 truncate">{a.actor || '—'}</p></div><Badge color={a.status === 'ok' || a.status === 'sent' || a.status === 'received' ? 'emerald' : a.status === 'failed' || a.status === 'error' ? 'rose' : 'slate'}>{a.status || '—'}</Badge></div><p className="text-sm text-slate-600 mt-1 truncate">{a.action || '—'} · {a.details || ''}</p><div className="flex items-center justify-between gap-2 mt-1"><p className="text-xs text-slate-400">{fmtDate(a.ts)}</p><p className="text-xs text-slate-400">{fmtRelative(a.ts)}</p></div></>); };
-  return (<div className="space-y-2">{items.length === 0 && <Card className="p-8 text-center text-slate-500">Aucune activité</Card>}{items.map(a => { const clickable = !!a.lead_id && openLead; if (clickable) { return (<Card key={a.source + a.id} className="overflow-hidden"><button onClick={() => openLead({ id: a.lead_id })} className="w-full text-left p-3 hover:bg-slate-50 active:bg-slate-100 transition">{renderInner(a)}<p className="text-xs text-indigo-600 mt-1 flex items-center gap-1"><IconChat className="w-3 h-3"/>Voir le lead</p></button></Card>); } return (<Card key={a.source + a.id} className="p-3">{renderInner(a)}</Card>); })}</div>);
+  return (<div className="space-y-2">{items.length === 0 && <Card className="p-8 text-center text-slate-500">Aucune activité</Card>}{items.map(a => { const clickable = !!a.lead_id && openLead; if (clickable) { return (<Card key={a.source + a.id} className="overflow-hidden"><button onClick={() => openLead({ id: a.lead_id })} className="w-full text-left p-3 hover:bg-slate-50 active:bg-slate-100 transition">{renderInner(a)}<p className="text-xs text-indigo-600 mt-1 flex items-center gap-1"><IconChat className="w-3 h-3"/>Voir le lead</p></button></Card>); } return (<Card key={a.source + a.id} className="p-3">{renderInner(a)}</Card>); })}{hasMore && (<div className="text-center pt-2"><Button variant="secondary" size="sm" onClick={loadMore} disabled={loadingMore}>{loadingMore ? '...' : 'Charger plus'}</Button></div>)}</div>);
 }
 function OptOutsSection({ api, toast }) {
-  const [list, setList] = useState([]); const [phone, setPhone] = useState(''); const [reason, setReason] = useState('manual'); const [busy, setBusy] = useState(false);
-  const load = useCallback(async () => { try { setList(await api.rest('/opt_outs?select=*&order=opted_out_at.desc&limit=200') || []); } catch (e) { toast(e.message, 'error'); } }, [api]);
+  const PAGE = 100;
+  const [list, setList] = useState([]); const [phone, setPhone] = useState(''); const [reason, setReason] = useState('manual'); const [busy, setBusy] = useState(false); const [hasMore, setHasMore] = useState(false); const [loadingMore, setLoadingMore] = useState(false);
+  const load = useCallback(async () => {
+    try {
+      const r = await api.rest('/opt_outs?select=*&order=opted_out_at.desc&limit=' + (PAGE + 1));
+      const arr = r || [];
+      setList(arr.slice(0, PAGE));
+      setHasMore(arr.length > PAGE);
+    } catch (e) { toast(e.message, 'error'); }
+  }, [api]);
   useEffect(() => { load(); }, [load]);
+  const loadMore = async () => {
+    if (loadingMore || list.length === 0) return;
+    setLoadingMore(true);
+    try {
+      const oldestTs = list[list.length - 1].opted_out_at;
+      const more = await api.rest('/opt_outs?select=*&order=opted_out_at.desc&opted_out_at=lt.' + encodeURIComponent(oldestTs) + '&limit=' + (PAGE + 1));
+      const arr = more || [];
+      setList(prev => [...prev, ...arr.slice(0, PAGE)]);
+      setHasMore(arr.length > PAGE);
+    } catch (e) { toast(e.message, 'error'); }
+    finally { setLoadingMore(false); }
+  };
   const add = async () => { if (!phone) return; setBusy(true); try { await api.rpc('add_manual_opt_out', { p_phone: phone, p_reason: reason }); setPhone(''); toast('Ajouté'); load(); } catch (e) { toast(e.message, 'error'); } finally { setBusy(false); } };
   const remove = async p => { if (!confirm('Retirer ' + p + '?')) return; try { await api.rpc('remove_opt_out', { p_phone: p }); toast('Retiré'); load(); } catch (e) { toast(e.message, 'error'); } };
   return (<div className="space-y-4">
     <Card className="p-4 space-y-3"><p className="font-semibold">Ajouter</p><Input value={phone} onChange={setPhone} placeholder="+15145551234"/><Input value={reason} onChange={setReason} placeholder="Raison"/><Button onClick={add} disabled={busy || !phone} className="w-full">Ajouter</Button></Card>
-    <Card className="p-4"><p className="font-semibold mb-3">Liste ({list.length})</p><div className="space-y-2 max-h-96 overflow-y-auto">{list.map(o => (<div key={o.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg"><div className="flex-1 min-w-0"><p className="font-mono text-sm">{o.phone_e164}</p><p className="text-xs text-slate-500">{o.reason || '—'} · {fmtDate(o.opted_out_at)}</p></div><button onClick={() => remove(o.phone_e164)} className="p-2 text-rose-600 hover:bg-rose-50 rounded-lg"><IconTrash className="w-4 h-4"/></button></div>))}</div></Card>
+    <Card className="p-4"><p className="font-semibold mb-3">Liste ({list.length}{hasMore ? '+' : ''})</p><div className="space-y-2 max-h-96 overflow-y-auto">{list.map(o => (<div key={o.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg"><div className="flex-1 min-w-0"><p className="font-mono text-sm">{o.phone_e164}</p><p className="text-xs text-slate-500">{o.reason || '—'} · {fmtDate(o.opted_out_at)}</p></div><button onClick={() => remove(o.phone_e164)} className="p-2 text-rose-600 hover:bg-rose-50 rounded-lg"><IconTrash className="w-4 h-4"/></button></div>))}{hasMore && (<div className="text-center pt-2"><Button variant="secondary" size="sm" onClick={loadMore} disabled={loadingMore}>{loadingMore ? '...' : 'Charger plus'}</Button></div>)}</div></Card>
   </div>);
 }
 function ErrorsSection({ api, toast }) {
@@ -563,7 +660,7 @@ function SettingsPage({ api, toast, onBack }) {
     <h2 className="text-xl font-bold">Réglages</h2>
     <div className="flex gap-1 p-1 bg-slate-100 rounded-xl text-sm">{[['general','Envoi'],['ai','IA'],['prompts','Prompts']].map(([k,l]) => <button key={k} onClick={() => setSection(k)} className={'flex-1 py-2 rounded-lg font-medium flex items-center justify-center gap-1 ' + (section === k ? 'bg-white shadow' : 'text-slate-600')}>{k === 'ai' || k === 'prompts' ? <IconSparkle className="w-4 h-4"/> : null}{l}</button>)}</div>
     {section === 'general' && (<><SettingItem k="quiet_hours_start" label="Début envoi" hint="0-23, fuseau Montréal" type="number" parser={v => parseInt(v, 10)}/><SettingItem k="quiet_hours_end" label="Fin envoi" hint="0-23" type="number" parser={v => parseInt(v, 10)}/><SettingItem k="quiet_hours_tz" label="Fuseau" parser={v => v}/><SettingItem k="daily_cap_per_number" label="Plafond / 24h" type="number" parser={v => parseInt(v, 10)}/><SettingItem k="send_throttle_ms" label="Délai envois (ms)" type="number" parser={v => parseInt(v, 10)}/></>)}
-    {section === 'ai' && (<><Card className="p-4"><Toggle checked={aiEnabled} onChange={v => save('ai_enabled', v)} label="IA activée" helper="Master switch"/></Card><Card className="p-4 space-y-3"><p className="font-semibold text-sm">Mode</p><div className="flex gap-2">{['shadow', 'auto'].map(m => (<button key={m} onClick={() => save('ai_mode', m)} className={'flex-1 py-2 rounded-lg text-sm font-medium border ' + (aiMode === m ? 'bg-violet-100 border-violet-300 text-violet-700' : 'bg-white border-slate-300')}>{m === 'shadow' ? 'Shadow (review)' : 'Auto'}</button>))}</div></Card><SettingItem k="ai_max_exchanges_per_lead" label="Max échanges/lead" type="number" parser={v => parseInt(v, 10)}/><SettingItem k="ai_skip_if_replied_recently_minutes" label="Anti double-rép (min)" type="number" parser={v => parseInt(v, 10)}/><SettingItem k="ai_outreach_model" label="Modèle outreach" parser={v => v}/><SettingItem k="ai_reply_model" label="Modèle réponses" parser={v => v}/></>)}
+    {section === 'ai' && (<><Card className="p-4"><Toggle checked={aiEnabled} onChange={v => save('ai_enabled', v)} label="IA activée" helper="Master switch"/></Card><Card className="p-4 space-y-3"><p className="font-semibold text-sm">Mode</p><div className="flex gap-2">{['shadow', 'auto'].map(m => (<button key={m} onClick={() => save('ai_mode', m)} className={'flex-1 py-2 rounded-lg text-sm font-medium border ' + (aiMode === m ? 'bg-violet-100 border-violet-300 text-violet-700' : 'bg-white border-slate-300')}>{m === 'shadow' ? 'Shadow (review)' : 'Auto'}</button>))}</div></Card><SettingItem k="ai_max_exchanges_per_lead" label="Max échanges/lead" type="number" parser={v => parseInt(v, 10)}/><SettingItem k="ai_skip_if_replied_recently_minutes" label="Anti double-rép (min)" type="number" parser={v => parseInt(v, 10)}/><SettingItem k="ai_outreach_model" label="Modèle outreach" parser={v => v}/><SettingItem k="ai_reply_model" label="Modèle réponses" parser={v => v}/><SettingItem k="ai_cost_daily_cap_usd" label="Cap coût IA / 24h ($)" hint="0 = pas de plafond. Au-delà, generate-reply/outreach refusent les nouveaux appels (503)." type="number" parser={v => parseFloat(v) || 0}/></>)}
     {section === 'prompts' && <PromptsEditor prompts={prompts} api={api} toast={toast} onUpdated={load}/>}
   </div>);
 }
